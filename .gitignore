@@ -1,0 +1,5 @@
+_refs/
+node_modules/
+.seokit/
+.env
+*.log

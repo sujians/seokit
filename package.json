@@ -1,0 +1,27 @@
+{
+  "name": "seokit",
+  "version": "0.1.0",
+  "description": "Universal SEO/GEO package for Pi agent, tailored for B2B manufacturing and export websites",
+  "type": "module",
+  "keywords": ["pi-package", "seo", "geo", "b2b", "manufacturing"],
+  "pi": {
+    "extensions": ["./extensions/seokit/index.ts"],
+    "skills": ["./skills"],
+    "prompts": ["./prompts"]
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "csv-parse": "^7.0.3",
+    "encoding-sniffer": "^0.2.1",
+    "undici": "^7.30.2",
+    "yaml": "^2.7.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": { "optional": true },
+    "typebox": { "optional": true }
+  }
+}

@@ -1,0 +1,247 @@
+# JSON Schema for .seokit/profile.yaml. Omit fields that are still unknown.
+$schema: https://json-schema.org/draft/2020-12/schema
+title: SEO project profile
+type: object
+required: [schema_version, project]
+additionalProperties: false
+properties:
+  schema_version:
+    type: integer
+    const: 1
+  project:
+    type: object
+    required: [name]
+    additionalProperties: false
+    properties:
+      name: { $ref: '#/$defs/text' }
+      website:
+        $ref: '#/$defs/text'
+        pattern: '^https?://[^\s/]+\S*$'
+      business_model: { $ref: '#/$defs/text' }
+      goals: { $ref: '#/$defs/text_list' }
+  company:
+    type: object
+    additionalProperties: false
+    properties:
+      legal_name: { $ref: '#/$defs/text' }
+      brand_name: { $ref: '#/$defs/text' }
+      headquarters: { $ref: '#/$defs/text' }
+      qualifications:
+        type: array
+        items: { $ref: '#/$defs/qualification' }
+      facilities:
+        type: array
+        items: { $ref: '#/$defs/facility' }
+      evidence: { $ref: '#/$defs/evidence' }
+  product_lines:
+    type: array
+    items: { $ref: '#/$defs/product_line' }
+  certifications:
+    type: array
+    items: { $ref: '#/$defs/certification' }
+  supply:
+    type: object
+    additionalProperties: false
+    properties:
+      moq: { $ref: '#/$defs/moq' }
+      sampling: { $ref: '#/$defs/sampling' }
+      lead_times:
+        type: array
+        items: { $ref: '#/$defs/lead_time' }
+      oem: { $ref: '#/$defs/capability' }
+      odm: { $ref: '#/$defs/capability' }
+      evidence: { $ref: '#/$defs/evidence' }
+  markets:
+    type: array
+    items: { $ref: '#/$defs/market' }
+  buyer_personas:
+    type: array
+    items: { $ref: '#/$defs/buyer_persona' }
+  terminology:
+    type: object
+    additionalProperties: false
+    properties:
+      glossary:
+        type: array
+        items: { $ref: '#/$defs/term' }
+      banned_phrases:
+        description: Empty marketing claims and other phrases the project has agreed to avoid.
+        type: array
+        items: { $ref: '#/$defs/banned_phrase' }
+
+$defs:
+  text:
+    type: string
+    pattern: '\S'
+  text_list:
+    type: array
+    items: { $ref: '#/$defs/text' }
+  evidence:
+    description: Public links or traceable source labels such as document names, revisions, or reference numbers.
+    $ref: '#/$defs/text_list'
+  qualification:
+    type: object
+    required: [name]
+    additionalProperties: false
+    properties:
+      name: { $ref: '#/$defs/text' }
+      issuer: { $ref: '#/$defs/text' }
+      reference: { $ref: '#/$defs/text' }
+      scope: { $ref: '#/$defs/text' }
+      evidence: { $ref: '#/$defs/evidence' }
+  facility:
+    type: object
+    required: [name]
+    additionalProperties: false
+    properties:
+      name: { $ref: '#/$defs/text' }
+      location: { $ref: '#/$defs/text' }
+      processes: { $ref: '#/$defs/text_list' }
+      capacity: { $ref: '#/$defs/text' }
+      qualifications:
+        type: array
+        items: { $ref: '#/$defs/qualification' }
+      evidence: { $ref: '#/$defs/evidence' }
+  product_line:
+    type: object
+    required: [name]
+    additionalProperties: false
+    properties:
+      name: { $ref: '#/$defs/text' }
+      models: { $ref: '#/$defs/text_list' }
+      applications: { $ref: '#/$defs/text_list' }
+      materials:
+        description: Include the grade, alloy, or material standard when known.
+        $ref: '#/$defs/text_list'
+      specifications:
+        type: array
+        items: { $ref: '#/$defs/specification' }
+      moq: { $ref: '#/$defs/moq' }
+      evidence: { $ref: '#/$defs/evidence' }
+  specification:
+    type: object
+    required: [name, value]
+    additionalProperties: false
+    properties:
+      name: { $ref: '#/$defs/text' }
+      value:
+        description: Use a number for a measured value and a string for ranges or ratings.
+        anyOf:
+          - type: number
+          - $ref: '#/$defs/text'
+      unit: { $ref: '#/$defs/text' }
+      tolerance:
+        description: Include limits and units when applicable, such as ±0.05 mm.
+        $ref: '#/$defs/text'
+      conditions:
+        description: Applicable models, test method, or measurement conditions.
+        $ref: '#/$defs/text'
+      evidence: { $ref: '#/$defs/evidence' }
+  certification:
+    type: object
+    required: [name]
+    additionalProperties: false
+    properties:
+      name: { $ref: '#/$defs/text' }
+      identifier: { $ref: '#/$defs/text' }
+      issuer: { $ref: '#/$defs/text' }
+      scope:
+        description: Covered entity, site, products, or models.
+        $ref: '#/$defs/text'
+      markets: { $ref: '#/$defs/text_list' }
+      status: { $ref: '#/$defs/text' }
+      valid_until:
+        $ref: '#/$defs/text'
+        format: date
+      evidence: { $ref: '#/$defs/evidence' }
+  moq:
+    type: object
+    required: [quantity, unit]
+    additionalProperties: false
+    properties:
+      quantity: { type: number, exclusiveMinimum: 0 }
+      unit: { $ref: '#/$defs/text' }
+      conditions: { $ref: '#/$defs/text' }
+      evidence: { $ref: '#/$defs/evidence' }
+  sampling:
+    type: object
+    additionalProperties: false
+    properties:
+      available: { type: boolean }
+      lead_time: { $ref: '#/$defs/text' }
+      terms: { $ref: '#/$defs/text' }
+      evidence: { $ref: '#/$defs/evidence' }
+  lead_time:
+    type: object
+    required: [stage, duration]
+    additionalProperties: false
+    properties:
+      stage: { $ref: '#/$defs/text' }
+      duration: { $ref: '#/$defs/text' }
+      conditions: { $ref: '#/$defs/text' }
+      evidence: { $ref: '#/$defs/evidence' }
+  capability:
+    type: object
+    additionalProperties: false
+    properties:
+      available: { type: boolean }
+      scope: { $ref: '#/$defs/text_list' }
+      conditions: { $ref: '#/$defs/text' }
+      evidence: { $ref: '#/$defs/evidence' }
+  market:
+    type: object
+    required: [region]
+    additionalProperties: false
+    properties:
+      region: { $ref: '#/$defs/text' }
+      languages:
+        description: Content languages, preferably as BCP 47 tags such as en-US or de-DE.
+        $ref: '#/$defs/text_list'
+      priority: { $ref: '#/$defs/text' }
+      notes: { $ref: '#/$defs/text' }
+  buyer_persona:
+    type: object
+    required: [name]
+    additionalProperties: false
+    properties:
+      name: { $ref: '#/$defs/text' }
+      role: { $ref: '#/$defs/text' }
+      industries: { $ref: '#/$defs/text_list' }
+      markets: { $ref: '#/$defs/text_list' }
+      applications: { $ref: '#/$defs/text_list' }
+      selection_criteria: { $ref: '#/$defs/text_list' }
+      procurement_concerns: { $ref: '#/$defs/text_list' }
+      search_intents: { $ref: '#/$defs/text_list' }
+  term:
+    type: object
+    required: [term]
+    additionalProperties: false
+    properties:
+      term: { $ref: '#/$defs/text' }
+      language: { $ref: '#/$defs/text' }
+      preferred: { $ref: '#/$defs/text' }
+      avoid: { $ref: '#/$defs/text_list' }
+      notes: { $ref: '#/$defs/text' }
+      evidence: { $ref: '#/$defs/evidence' }
+  banned_phrase:
+    type: object
+    required: [phrase]
+    additionalProperties: false
+    properties:
+      phrase: { $ref: '#/$defs/text' }
+      language: { $ref: '#/$defs/text' }
+      reason: { $ref: '#/$defs/text' }
+
+examples:
+  - schema_version: 1
+    project:
+      name: Example industrial supplier
+      website: https://example.com/
+    markets:
+      - region: Germany
+        languages: [de-DE, en]
+    terminology:
+      banned_phrases:
+        - phrase: world-class quality
+          language: en
+          reason: Replace with a measurable claim when evidence is available.
