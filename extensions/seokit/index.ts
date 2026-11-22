@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { Type, type TSchema } from "typebox";
 import { Value } from "typebox/value";
 import { parse, parseDocument } from "yaml";
+import { dataForSeoBacklinksTool, dataForSeoKeywordsTool, dataForSeoSerpTool } from "./providers/dataforseo.js";
 import { fetchPageTool } from "./tools/fetch-page.js";
 import { parseSeoTool } from "./tools/parse-seo.js";
 import { readKeywordCsvTool } from "./tools/read-keyword-csv.js";
@@ -18,6 +19,9 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool(readKeywordCsvTool);
   pi.registerTool(validateSchemaTool);
   pi.registerTool(scoreGeoTool);
+  pi.registerTool(dataForSeoKeywordsTool);
+  pi.registerTool(dataForSeoSerpTool);
+  pi.registerTool(dataForSeoBacklinksTool);
 
   pi.registerTool({
     name: "seokit_load_profile",
