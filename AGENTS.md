@@ -9,14 +9,14 @@ All research, audits, and content must be grounded in target market, buyer inten
 
 1. Follow official Pi package conventions (`extensions/`, `skills/`, `prompts/`). Always verify current Pi extension APIs against Pi's built-in docs before writing code.
 2. TypeScript first: implement core tools (`fetch_page`, `parse_seo`, `validate_schema`, `score_geo`, optional `dataforseo`) in `extensions/seokit/` with zero Python dependency for core usage.
-3. Lightweight state: store per-project data in `.seokit/` (`profile.yaml`, `clusters.yaml`, `audits/`). Never build a heavy vault or database.
+3. Lightweight state: store the project profile at `profile/profile.yaml`, topic plans under `clusters/`, audit reports under `audits/`, and working drafts under `drafts/`. Never build a heavy vault or database.
 4. Progressive skills: keep each `SKILL.md` concise and move detailed checklists/templates into `references/`.
 5. `_refs/` contains source repositories (`claude-seo`, `geo-seo-claude`, `claude-blog`) for domain logic reference ONLY. Never copy files verbatim.
 
 ## Planned Modules
 
 - **Skills**: `profile`, `seo-audit`, `seo-keyword-cluster`, `seo-geo`, `seo-schema`, `seo-brief`, `seo-write`, `seo-localize`, `seo-competitor`
-- **Optional Data Provider**: `dataforseo` (Keywords Data, SERP, Backlinks only). Enabled via `DATAFORSEO_LOGIN` / `DATAFORSEO_PASSWORD`, must include cost-estimation confirmation before batch calls, and gracefully degrade to web scraping / user CSV import when unconfigured.
+- **Optional Data Provider**: `dataforseo` (Keywords Data, SERP, Backlinks only). Read `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD` from the process environment first, then `profile/.env` for variables absent from the environment. Keep `profile/.env` in `.gitignore`. Include cost estimation and batch confirmation, and fall back to web scraping or user CSV import when unconfigured.
 
 ## Hard Exclusions (Do NOT Port)
 
@@ -29,4 +29,4 @@ All research, audits, and content must be grounded in target market, buyer inten
 ## Evidence & Source Policy
 
 - **Industry & Technical Facts**: Actively use web search/fetch to verify standards (ISO/ASTM/IEC/UL/FDA), material properties, and market data, and cite authoritative public sources.
-- **First-Party Company Claims**: Only state company-specific specs, tolerances, certifications, MOQs, lead times, or capacities if verified in `.seokit/profile.yaml` or provided by the user. If `.seokit/profile.yaml` does not exist, write as an objective industry guide or insert `[TODO: add company proof]` where brand evidence is needed.
+- **First-Party Company Claims**: Only state company-specific specs, tolerances, certifications, MOQs, lead times, or capacities if verified in `profile/profile.yaml` or provided by the user. If `profile/profile.yaml` does not exist, write as an objective industry guide or insert `[TODO: add company proof]` where brand evidence is needed.

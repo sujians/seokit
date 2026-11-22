@@ -1,11 +1,26 @@
 # 集群计划输出约定
 
-## `.seokit/clusters.yaml`
+## 专题文件名
 
-用一个 YAML 文档保存 `schema_version: 1` 和 `clusters` 列表。每个集群写明 `id`、`topic`、`markets`（地区列表或 `null`）、`language`（语言标签或 `null`）、`profile_mode`（`profile` 或 `generic`）、`updated_at`、`sources`、`pages`、`links` 和 `open_questions`。少量示例字段如下，真实计划按素材补齐。
+每个输入专题使用一对文件 `clusters/<keyword-slug>-clusters.yaml` 和 `clusters/<keyword-slug>-clusters.md`。以输入主题生成小写 slug，保留 Unicode 字母、数字及其组合标记，将连续空白、标点和路径分隔符替换为单连字符，限制长度并去掉首尾连字符。可用以下规则计算。
+
+```js
+function topicSlug(topic) {
+  const normalized = topic.normalize("NFKC").toLowerCase().normalize("NFC");
+  const slug = normalized.replace(/[^\p{L}\p{N}\p{M}]+/gu, "-").replace(/^-+|-+$/g, "");
+  return Array.from(slug).slice(0, 48).join("").replace(/-+$/, "") || "topic";
+}
+```
+
+例如 `Stainless Steel Enclosures` 使用 `stainless-steel-enclosures`，`不锈钢 工业机箱` 使用 `不锈钢-工业机箱`。写前检查基本 slug 及同名前缀的编号文件。以 YAML 的顶层 `topic` 匹配原主题，比较时仅统一 Unicode、大小写和空白。已有匹配时复用该文件对。没有匹配时选用首个两个文件名均空闲的 slug，冲突依次加 `-2`、`-3` 等后缀。保留无法确认归属的已有文件。发现多份 YAML 匹配同一主题时，保留文件并报告冲突。
+
+## 专题 YAML
+
+每份 YAML 保存 `schema_version: 1`、顶层 `topic`（保留用户输入的主题）和该专题的 `clusters` 列表。每个集群写明 `id`、`topic`、`markets`（地区列表或 `null`）、`language`（语言标签或 `null`）、`profile_mode`（`profile` 或 `generic`）、`updated_at`、`sources`、`pages`、`links` 和 `open_questions`。少量示例字段如下，真实计划按素材补齐。
 
 ```yaml
 schema_version: 1
+topic: Stainless steel enclosures
 clusters:
   - id: en-enclosures
     topic: Stainless steel enclosures
@@ -71,12 +86,12 @@ clusters:
 - `sources` 用 `id`、`type` 和 `reference` 标识来源。CSV 引用记录文件名和记录号，网页来源记录 URL，SERP 比较还应记录词对、市场、语言、设备、查询日期、结果来源和适用时的重合数。页面通过 `evidence_refs` 引用本集群来源。若输出词级指标，按词和市场保留来源及统计周期，未知值用 `null`，明确的 `0` 原样保留。
 - 同语言同 URL 面向多个相近市场时，把地区列入同一个 `markets`；查询意图或页面职责确有区别时规划独立路径。计划尚无市场信息时可使用 `null` 并列为待验证项。
 
-## `.seokit/clusters.md`
+## 专题 Markdown
 
 从校验后的完整 YAML 生成 Markdown。开头概括每个集群的主题、市场、语言、档案模式、CSV 覆盖与证据局限。按集群和优先级列出每个页面，包含建议路径或现有 URL、主要和辅助目标词、买家任务与意图阶段、建议页型、优先级及理由、所有计划中的出链目标。内链至少给出目标页面标题或路径；需要时补充锚文本与放置位置。最后列出首批实施顺序、上线依赖和待验证项。
 
 ## 更新与核对
 
-1. 写前读取已有 YAML。首次运行创建文件。再次运行按同一主题及目标市场语言匹配既有集群并更新，保留其他集群和已确定的页面标识。清理因此失效的链接或明确替代目标。遇到现有 YAML 损坏、版本不明或匹配不明确时，保留原文件并指出需要处理的冲突。
+1. 按专题选定文件对并读取对应 YAML。同专题按目标市场和语言更新既有集群，保留该专题的其他市场语言与已确定的页面标识。清理因此失效的链接或明确替代目标。只写选定的专题文件对。遇到要更新的 YAML 损坏、版本不明或匹配不明确时，保留原文件并报告冲突。
 2. 写前核对 YAML 结构与字段，验证 Hub 数量、页面 ID、关键词归属、URL、证据引用和链接端点。用 YAML 解析器检查语法（若使用 shell，沿用 Ruby/Node 等环境中提供的 YAML 解析器，无需安装工具；也可用 JSON 语法输出 YAML 兼容文档）。含冒号、井号或易被解释为其他类型的词用引号包裹。确认 Markdown 的页面和出链与同一份计划一致。
 3. 先写 YAML，再写 Markdown。完成后读回两个文件，核对本次主题及保留的集群。Markdown 写入失败时从已保存的 YAML 重新生成并验证，仍未完成时说明哪个文件未更新。

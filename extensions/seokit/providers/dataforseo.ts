@@ -1,6 +1,9 @@
 import { defineTool, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { readFile } from "node:fs/promises";
 import { isIP } from "node:net";
+import { join } from "node:path";
 import { domainToASCII } from "node:url";
+import { parseEnv } from "node:util";
 import { Type } from "typebox";
 import { EnvHttpProxyAgent, fetch, type Dispatcher } from "undici";
 import { analysisResult, objectOutput, type JsonValue } from "../tools/result.js";
@@ -106,11 +109,26 @@ async function postTask(endpoint: Endpoint, task: Task, authorization: string, d
   }
 }
 
+async function readCredentials(cwd: string, signal?: AbortSignal) {
+  const environment = credentialNames.map((name) => process.env[name]);
+  if (environment.every((value) => value !== undefined)) return environment;
+
+  try {
+    const source = await readFile(join(cwd, "profile", ".env"), { encoding: "utf8", signal });
+    const fileEnv = parseEnv(source.replace(/^\uFEFF/, ""));
+    return credentialNames.map((name, index) => environment[index] ?? fileEnv[name]);
+  } catch {
+    // Treat an unavailable file as an absent source and keep file contents out of diagnostics.
+    return environment;
+  }
+}
+
 async function runBatch(endpoint: Endpoint, dryRun: boolean, buildTasks: () => Task[], ctx: ExtensionContext, signal?: AbortSignal) {
-  const [login, password] = credentialNames.map((name) => process.env[name]);
-  const missingEnv = credentialNames.filter((name) => !process.env[name]?.trim());
+  const credentials = await readCredentials(ctx.cwd, signal);
+  const [login, password] = credentials;
+  const missingEnv = credentialNames.filter((_, index) => !credentials[index]?.trim());
   const available = missingEnv.length === 0;
-  const configuration = available ? null : "Set DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD in the environment that launches Pi, then restart Pi.";
+  const configuration = available ? null : "Set DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD in Pi’s environment or in profile/.env. Process environment values take precedence per variable.";
   const base = { provider: "DataForSEO", endpoint, available };
   if (!available && !dryRun) return analysisResult({ ...base, status: "not_configured", missingEnv, configuration, fallback });
 

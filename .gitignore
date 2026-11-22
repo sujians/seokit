@@ -1,5 +1,5 @@
 _refs/
 node_modules/
-.seokit/
+profile/.env
 .env
 *.log

@@ -26,10 +26,10 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "seokit_load_profile",
     label: "Load SEO project profile",
-    description: "Read and validate .seokit/profile.yaml in the current project. Returns the validated profile as JSON.",
+    description: "Read and validate profile/profile.yaml in the current project. Returns the validated profile as JSON.",
     parameters: Type.Object({}, { additionalProperties: false }),
     async execute(_toolCallId, _params, signal, _onUpdate, ctx) {
-      const path = join(ctx.cwd, ".seokit", "profile.yaml");
+      const path = join(ctx.cwd, "profile", "profile.yaml");
       let source: string;
       try {
         source = await readFile(path, { encoding: "utf8", signal });

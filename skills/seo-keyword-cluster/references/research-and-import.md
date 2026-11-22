@@ -22,7 +22,7 @@
 
 ### 可选 DataForSEO 数据
 
-- 市场和语言已确认时，用 DataForSEO 对应的国家名称或 `location_code` 和 `language_code`。先对计划中的完整批次传 `dry_run: true`，查看 `available` 和 `estimate`。`available` 为 `true` 表示 Pi 的环境中有两项凭据，可沿用同一批参数并省略 `dry_run` 获取结果。若无凭据、工具不可用、请求失败或用户拒绝，直接沿用公开搜索、网页抓取和用户提供的 CSV。已有可比数据可复用。
+- 市场和语言已确认时，用 DataForSEO 对应的国家名称或 `location_code` 和 `language_code`。先对计划中的完整批次传 `dry_run: true`，查看 `available` 和 `estimate`。`available` 为 `true` 表示从进程环境、`profile/.env` 或两者组合取得了两项凭据，可沿用同一批参数并省略 `dry_run` 获取结果。若无凭据、工具不可用、请求失败或用户拒绝，直接沿用公开搜索、网页抓取和用户提供的 CSV。已有可比数据可复用。
 - 用 `seokit_dataforseo_keywords({ queries: [{ location, language_code, keywords }], dry_run: true })` 估算词量批次。每个 `queries` 项对应一个 Google Ads 任务，最多 1,000 个关键词。词量为近似月均值，CPC 以 USD 计价。相近词可能合并统计，缺失值继续标为未知。
 - 用 `seokit_dataforseo_serp({ location, language_code, keywords, top_n: 10, device: "desktop", dry_run: true })` 估算同口径 SERP 批次。代表词用真实请求返回的 `organic`、`observedAt` 和 `searchUrl` 建立比较证据。样本不足 10 个自然结果时记录覆盖。
 - 记录两类查询的来源、国家、语言和日期。批量结果的预览如有截断，用 Pi `codemode` 读取结构化数据并按需选取字段。批次估算超过 $0.50 时，实际调用由 Pi 弹出费用及逐项明细，等用户确认。保持完整批次，勿拆分以绕过确认。`partial` 可保留已成功返回的证据，其余研究走现有降级流程。

@@ -1,4 +1,4 @@
-# JSON Schema for .seokit/profile.yaml. Omit fields that are still unknown.
+# JSON Schema for profile/profile.yaml. Omit fields that are still unknown.
 $schema: https://json-schema.org/draft/2020-12/schema
 title: SEO project profile
 type: object
