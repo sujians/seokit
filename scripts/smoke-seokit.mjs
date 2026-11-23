@@ -31,7 +31,7 @@ try {
   for (const name of skillNames) assert.ok((await readFile(repoPath(`skills/${name}/SKILL.md`), "utf8")).trim());
   for (const name of Object.keys(promptPaths)) assert.ok((await readFile(repoPath(`prompts/${name}.md`), "utf8")).trim());
   const contentReferences = {
-    "seo-brief": ["serp-gap-and-brief-schema.md"],
+    "seo-brief": ["serp-gap-and-research.md", "brief-output-template.md", "page-type-templates.md"],
     "seo-write": ["b2b-writing-and-anti-slop.md", "geo-citation-and-qa.md"],
   };
   for (const [skill, names] of Object.entries(contentReferences)) {
@@ -90,6 +90,7 @@ try {
     assert.ok(prompts.find((prompt) => prompt.name === name)?.content.includes(path), `${name} should use ${path}`);
   }
   assert.ok(prompts.find(({ name }) => name === "seokit-cluster").content.includes("clusters/<keyword-slug>-clusters.md"));
+  assert.ok(prompts.find(({ name }) => name === "seokit-article").content.includes("drafts/<slug>-brief.md"));
   console.log(`PASS README, ${skills.length} skills, ${prompts.length} prompts, content references and workspace paths`);
   await assert.rejects(invoke("seokit_load_profile", {}), /Profile not found .*profile[/\\]profile\.yaml/);
   const profileFile = promptPaths["seokit-init"];
@@ -118,6 +119,8 @@ try {
     "audits/schema.org-2026-01-15.md": "# Smoke audit\n",
     "audits/schema-org-product-geo.md": "# Smoke GEO audit\n",
     "drafts/llms.txt": "# Smoke project\n\n## Products\n\n- [Product](https://schema.org/Product)\n",
+    [`drafts/${slug}-brief.md`]: `# Content Brief: ${plan.topic}
+`,
     [`drafts/${slug}.md`]: markdown,
     [`drafts/${slug}.de-DE.md`]: "# Edelstahlgehäuse\n",
   };
@@ -141,7 +144,7 @@ try {
   assert.equal(localizedGeo.signals.directAnswerBlocks, 1);
   assert.equal(localizedGeo.signals.measurements, 1);
   assert.equal(localizedGeo.signals.attributions, 1);
-  console.log("PASS project profile, topic plans, audits, drafts, translations and multilingual CSV and GEO inputs");
+  console.log("PASS project profile, topic plans, audits, briefs, drafts, translations and multilingual CSV and GEO inputs");
 
   const howTo = JSON.stringify({ "@context": "https://schema.org", "@type": "HowTo" });
   const validate = (blocks, options) => run("seokit_validate_schema", { blocks, ...options });

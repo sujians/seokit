@@ -39,7 +39,7 @@ Workflows create these paths as needed, relative to the directory where Pi start
 | [profile](skills/profile/SKILL.md) | `/seokit-init [url]` | Confirmed and validated `profile/profile.yaml`. |
 | [seo-audit](skills/seo-audit/SKILL.md) | `/seokit-audit <url>` | Page, index eligibility, structured data, and procurement evidence audit in `audits/<domain>-<date>.md`. |
 | [seo-keyword-cluster](skills/seo-keyword-cluster/SKILL.md) | `/seokit-cluster <topic> [csv]` | Buyer-intent clusters with hubs, spokes, and an internal link plan in `clusters/`. |
-| [seo-brief](skills/seo-brief/SKILL.md) | `/seokit-article <topic>` | Market and competitor research and a brief for a product, process, comparison, or procurement page. |
+| [seo-brief](skills/seo-brief/SKILL.md) | `/seokit-article <topic>` | A researched brief for a product, process, comparison, or procurement page in `drafts/<slug>-brief.md`. |
 | [seo-write](skills/seo-write/SKILL.md) | `/seokit-article <topic>` | Drafts and verifies claims and citability before saving to `drafts/<slug>.md`. |
 | [seo-localize](skills/seo-localize/SKILL.md) | `/seokit-translate <file> <locale>` | Localized content and hreflang guidance in `drafts/<slug>.<locale>.md`. |
 | [seo-geo](skills/seo-geo/SKILL.md) | `/seokit-geo [url]` | AI crawler, citability, and entity checks in `audits/<slug>-geo.md`, plus `drafts/llms.txt` when site identity and links are verified. |
