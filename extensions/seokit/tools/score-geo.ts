@@ -3,11 +3,12 @@ import { load } from "cheerio";
 import { Type } from "typebox";
 import { MAX_HTML_BYTES, analysisResult, objectOutput } from "./result.js";
 
+// The Unicode escapes in these patterns match Chinese units and phrases.
 const STANDARD = /\b(?:ISO(?:\s*\/\s*IEC)?|IEC|ASTM|EN|DIN|ANSI|ASME|UL|SAE|JIS|GB(?:\s*\/\s*T)?)\s*[-:]?\s*[A-Z]?\s*\d{2,}(?:[-:]\d+)*\b/gi;
-const MEASUREMENT = /(?:[$€£]\s*\d[\d.,]*|\d[\d.,]*\s*(?:[%％℃°×μµ]|mm|cm|m²|m³|m|kg|mg|g|mL|L|min|hours?|days?|weeks?|psi|bar|MPa|kPa|kN|Nm|N|V|mA|A|W|kW|Hz|rpm|dB|pieces?|units?|pcs|毫米|厘米|千克|公斤|件|天|周)(?![\p{L}\p{N}]))/giu;
-const ATTRIBUTION = /\b(?:according to|as (?:reported|measured|specified) by|data from|test(?:ed|ing) (?:to|per)|selon|según|gemäß)\s+\S+|(?:根据|依据|参照)\s*\S+/giu;
-const ANSWER = /\b(?:is (?:a|an|the|defined as)|refers? to|means|requires?|supports?|meets?|provides?|ranges? from|typically takes|weighs?|withstands?|is made (?:of|from)|est un(?:e)?|se refiere a|ist ein(?:e)?)\b|(?:是指|指的是|适用于|符合|采用|由.{1,20}制成|公差为|起订量为|交期为)/iu;
-const DEPENDENT_START = /^(?:(?:it|they|this|these|those|that|which|as noted|as above|the following)\b|如上|如下|上述|该|这些|它们?)/iu;
+const MEASUREMENT = /(?:[$€£]\s*\d[\d.,]*|\d[\d.,]*\s*(?:[%％℃°×μµ]|mm|cm|m²|m³|m|kg|mg|g|mL|L|min|hours?|days?|weeks?|psi|bar|MPa|kPa|kN|Nm|N|V|mA|A|W|kW|Hz|rpm|dB|pieces?|units?|pcs|\u6beb\u7c73|\u5398\u7c73|\u5343\u514b|\u516c\u65a4|\u4ef6|\u5929|\u5468)(?![\p{L}\p{N}]))/giu;
+const ATTRIBUTION = /\b(?:according to|as (?:reported|measured|specified) by|data from|test(?:ed|ing) (?:to|per)|selon|según|gemäß)\s+\S+|(?:\u6839\u636e|\u4f9d\u636e|\u53c2\u7167)\s*\S+/giu;
+const ANSWER = /\b(?:is (?:a|an|the|defined as)|refers? to|means|requires?|supports?|meets?|provides?|ranges? from|typically takes|weighs?|withstands?|is made (?:of|from)|est un(?:e)?|se refiere a|ist ein(?:e)?)\b|(?:\u662f\u6307|\u6307\u7684\u662f|\u9002\u7528\u4e8e|\u7b26\u5408|\u91c7\u7528|\u7531.{1,20}\u5236\u6210|\u516c\u5dee\u4e3a|\u8d77\u8ba2\u91cf\u4e3a|\u4ea4\u671f\u4e3a)/iu;
+const DEPENDENT_START = /^(?:(?:it|they|this|these|those|that|which|as noted|as above|the following)\b|\u5982\u4e0a|\u5982\u4e0b|\u4e0a\u8ff0|\u8be5|\u8fd9\u4e9b|\u5b83\u4eec?)/iu;
 const HEADING = "h1,h2,h3,h4,h5,h6";
 const PARAGRAPH = "p,blockquote,dd";
 

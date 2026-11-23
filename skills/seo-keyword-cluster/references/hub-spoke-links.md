@@ -1,24 +1,24 @@
-# Hub-Spoke 内链规则
+# Hub-and-Spoke Internal Links
 
-## 分配页面职责
+## Assign page responsibilities
 
-- 每个专题及市场语言版本指定一个 Hub。优先选择能够承接宽产品族任务、入口稳定的品类或产品系列页。宽词明显指向选型或解决方案时，可用选型或方案总览作 Hub，再连到商业采购 Spoke。
-- 每个 Spoke 负责一个可独立满足的采购或工程任务。Hub 解释范围与路径，Spoke 提供具体证据和下一步。能在 Hub 以一个段落或一张表解决的问题可合入 Hub 的辅助词和章节。
-- 用 `reuse`、`update` 或 `create` 标记页面行动。已有合适 URL 优先复用或更新。计划中的新路径遵循现有站点目录和语言路由，记录为建议路径。已有两页争同一任务时，先确定保留目标与待核对证据，再决定合并建议。
+- Assign one Hub per topic, market, and language. Prefer a stable category or product series page that serves the broader family. When broad terms clearly indicate selection or solution intent, a selection or solution overview can serve as the Hub and link to procurement Spokes.
+- Give each Spoke one discrete procurement or engineering task. The Hub explains scope and paths. Spokes provide specific evidence and next steps. Questions that fit within one Hub paragraph or table can become secondary terms and sections on the Hub.
+- Mark the action `reuse`, `update`, or `create`. Prefer to reuse or update a suitable existing URL. Follow current site directories and language routing for proposed paths. When two pages compete for one task, identify the preferred target and outstanding evidence before recommending consolidation.
 
-## 绘制有向链接
+## Plan directed links
 
-| 链接类型 | 方向及实施 |
+| Link type | Direction and implementation |
 | --- | --- |
-| `hub_to_spoke` | Hub 在相关产品、工艺、行业或选型段落链接每个 Spoke。 |
-| `spoke_to_hub` | 每个 Spoke 从正文链接回 Hub，以品类、系列或任务描述作为锚文本。 |
-| `related` | Spoke 间在买家有后续问题时连接。例如行业页引向该场景的规格页，比较页引向候选规格页。跨集群链接只在目标页面已列入规划、语言市场适配且关系明确时添加。 |
-| `procurement` | 规格、应用或对比页在读者具备选型条件时引导到匹配的产品或采购页。若同一目的已由回 Hub 的链接完成，使用一条链接即可。 |
+| `hub_to_spoke` | Link from the relevant Hub product, process, industry, or selection section to each Spoke. |
+| `spoke_to_hub` | Link from each Spoke body back to the Hub using the category, series, or task as the anchor. |
+| `related` | Connect Spokes when a buyer has a follow-up question, for example from an industry page to applicable specifications or from a comparison to candidate specifications. Link across clusters when the target is registered, matches language and market, and has a clear relationship. |
+| `procurement` | Link from a specification, application, or comparison to the matching product or procurement page when buyers can act on the information. Use the return Hub link alone if it already serves this purpose. |
 
-用目标页面语言写具体且自然的锚文本，记录正文中预计放置的段落与读者需要它的原因。将规划中的链接安排到目标可访问后上线，链接现有页面前核对其最终 URL。面包屑、页脚和导航可辅助发现。语言切换及 hreflang 依照站点国际化设计记录。
+Use clear, natural anchor text in the target language. Record the planned paragraph and why a buyer needs the link. Publish links after the destination is accessible and verify final URLs for existing pages. Breadcrumbs, footer links, and navigation can aid discovery. Record language switches and hreflang according to the site’s international structure.
 
-## 交付前核对
+## Delivery checks
 
-- Hub 与每个 Spoke 都有明确、可追踪的双向路径。每个 Spoke 从本集群 Hub 一跳可达，任何建议链接均指向已登记的页面，且无自链及重复的来源—目标组合。
-- 逐项核对同市场、同语言、同一搜索任务的主词和辅助词归属。跨专题时复用已有目标页，或说明拆页的任务和证据差异。一个 URL 对应一个页面计划；多个市场共用同一语言 URL 时记录共同适用范围。
-- 复核拟新增路径是否与现有路由和已规划路径重名。优先排序先处理 Hub 或承接采购的既有落地页，再落实依赖它们的 Spoke 和正文内链。
+- Verify traceable, two-way links between the Hub and each Spoke. Every Spoke is one click from its Hub. Each proposed link points to a registered page, with no self-links or duplicate source and destination pairs.
+- Confirm ownership of primary and secondary terms for the same task, market, and language. Reuse an existing target across topics or document task and evidence differences that justify separate pages. Keep one page plan per URL and record the shared scope for URLs serving several markets in the same language.
+- Check proposed paths for conflicts with existing and planned routes. Start with the Hub or existing procurement landing page, then implement dependent Spokes and body links.

@@ -30,6 +30,22 @@ try {
   assert.ok((await readFile(repoPath("README.md"), "utf8")).trim(), "README.md should contain release documentation");
   for (const name of skillNames) assert.ok((await readFile(repoPath(`skills/${name}/SKILL.md`), "utf8")).trim());
   for (const name of Object.keys(promptPaths)) assert.ok((await readFile(repoPath(`prompts/${name}.md`), "utf8")).trim());
+  const contentReferences = {
+    "seo-brief": ["serp-gap-and-brief-schema.md"],
+    "seo-write": ["b2b-writing-and-anti-slop.md", "geo-citation-and-qa.md"],
+  };
+  for (const [skill, names] of Object.entries(contentReferences)) {
+    const skillPath = `skills/${skill}`;
+    const instructions = await readFile(repoPath(`${skillPath}/SKILL.md`), "utf8");
+    for (const name of names) {
+      const reference = `references/${name}`;
+      assert.ok(instructions.includes(`](${reference})`), `${skill} should link to ${reference}`);
+      const path = `${skillPath}/${reference}`;
+      const guidance = await readFile(repoPath(path), "utf8");
+      assert.ok(guidance.trim(), `${path} should contain guidance`);
+      assert.ok(!guidance.includes("\0"), `${path} should be Markdown text`);
+    }
+  }
   await checkWorkspacePaths();
 
   const loader = new DefaultResourceLoader({
@@ -74,7 +90,7 @@ try {
     assert.ok(prompts.find((prompt) => prompt.name === name)?.content.includes(path), `${name} should use ${path}`);
   }
   assert.ok(prompts.find(({ name }) => name === "seokit-cluster").content.includes("clusters/<keyword-slug>-clusters.md"));
-  console.log(`PASS README, ${skills.length} skills, ${prompts.length} prompts, and workspace paths`);
+  console.log(`PASS README, ${skills.length} skills, ${prompts.length} prompts, content references and workspace paths`);
   await assert.rejects(invoke("seokit_load_profile", {}), /Profile not found .*profile[/\\]profile\.yaml/);
   const profileFile = promptPaths["seokit-init"];
   const profileYaml = "schema_version: 1\nproject:\n  name: Smoke project\n";
@@ -86,7 +102,7 @@ try {
   const slugSource = planReference.match(/```js\n([\s\S]*?)\n```/)[1];
   const topicSlug = runInNewContext(`${slugSource}\ntopicSlug`, {}, { timeout: 1000 });
   assert.equal(topicSlug(" ../STAINLESS Steel\\Enclosures: "), "stainless-steel-enclosures");
-  assert.equal(topicSlug("不锈钢 工业机箱"), "不锈钢-工业机箱");
+  assert.equal(topicSlug("\u4e0d\u9508\u94a2 \u5de5\u4e1a\u673a\u7bb1"), "\u4e0d\u9508\u94a2-\u5de5\u4e1a\u673a\u7bb1");
   assert.equal(topicSlug("../.."), "topic");
   assert.equal(topicSlug("a".repeat(100)).length, 48);
   const fixturePlan = planReference.match(/```yaml\n([\s\S]*?)\n```/)[1];
@@ -114,7 +130,18 @@ try {
   await writeFile("keywords.csv", `keyword,volume\n${keyword},0\n`);
   const csv = await run("seokit_read_keyword_csv", { path: "keywords.csv" });
   assert.deepEqual(csv.rows, [{ recordNumber: 1, keyword, volume: "0" }]);
-  console.log("PASS project profile, topic plans, audits, drafts, translations and CSV import");
+  const localizedKeyword = "\u4e0d\u9508\u94a2\u673a\u7bb1";
+  const localizedHeaders = "\u5173\u952e\u8bcd,\u641c\u7d22\u91cf";
+  await writeFile("keywords-zh.csv", localizedHeaders + "\n" + localizedKeyword + ",0\n");
+  const localizedCsv = await run("seokit_read_keyword_csv", { path: "keywords-zh.csv" });
+  assert.deepEqual(localizedCsv.rows, [{ recordNumber: 1, keyword: localizedKeyword, volume: "0" }]);
+
+  const localizedHtml = "<main><p>\u4e0d\u9508\u94a2\u673a\u7bb1\u9002\u7528\u4e8e\u6237\u5916\u8bbe\u5907\u3002\u6839\u636e\u4ea7\u54c1\u56fe\u7eb8\uff0c\u677f\u6750\u539a\u5ea6\u4e3a 2 \u6beb\u7c73\u3002</p></main>";
+  const localizedGeo = await run("seokit_score_geo", { html: localizedHtml });
+  assert.equal(localizedGeo.signals.directAnswerBlocks, 1);
+  assert.equal(localizedGeo.signals.measurements, 1);
+  assert.equal(localizedGeo.signals.attributions, 1);
+  console.log("PASS project profile, topic plans, audits, drafts, translations and multilingual CSV and GEO inputs");
 
   const howTo = JSON.stringify({ "@context": "https://schema.org", "@type": "HowTo" });
   const validate = (blocks, options) => run("seokit_validate_schema", { blocks, ...options });

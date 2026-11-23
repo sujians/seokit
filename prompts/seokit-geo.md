@@ -1,10 +1,10 @@
 ---
-description: 评估 B2B 制造站的 AI 爬虫策略和页面可引用性，生成 GEO 报告与 llms.txt
+description: Evaluate AI crawler policy and page citability for a B2B manufacturer, and generate a GEO report and llms.txt draft
 argument-hint: "[url]"
 ---
 
-按已注册的 `seo-geo` 技能执行，并读取 `references/llms-txt-and-entities.md`。评估 URL 为 `${1:-未提供}`。先尝试调用 `seokit_load_profile({})` 读取 `profile/profile.yaml`。未提供 URL 时使用适用档案中的 `project.website`。缺少有效目标时请用户提供公开 HTTP(S) URL。
+Follow the registered `seo-geo` skill and read `references/llms-txt-and-entities.md`. The target is `${1:-not provided}`. First try `seokit_load_profile({})` to read `profile/profile.yaml`. If the URL was omitted, use `project.website` from the applicable profile. Ask for a public HTTP(S) URL if no valid target is available.
 
-按参考中的工具执行流抓取目标页，调用 `seokit_check_robots` 检查最终 URL 的有效规则，并将抓取到的 HTML 传给 `seokit_score_geo`。完整工具链使用 Pi `codemode`（`pi --tools +codemode`）。记录无法验证的检查项，并继续执行其余可用检查。
+Follow the reference workflow to fetch the page, call `seokit_check_robots` for the final URL, and pass the fetched HTML to `seokit_score_geo`. Use Pi `codemode` for the full chain (`pi --tools +codemode`). Record unverifiable checks and complete the ones that remain available.
 
-将站内优化清单、站外实体核查和复测条件写入 `audits/<slug>-geo.md`。用适用档案与已验证的公开页面生成 `drafts/llms.txt`。读回核对后回复交付路径、优先改动和仍缺的资料。
+Write on-site improvements, external entity checks, and retest criteria to `audits/<slug>-geo.md`. Use the applicable profile and verified public pages to prepare `drafts/llms.txt`. Read back the outputs and report paths, priority changes, and evidence still needed.

@@ -3,10 +3,10 @@ name: seo-keyword-cluster
 description: Plan keyword clusters and hub-and-spoke page architecture for B2B manufacturing, industrial products, and export websites. Import a supplied keyword CSV, map buyer intent to pages, and save a prioritized plan and Markdown summary under clusters/.
 ---
 
-# B2B 制造与外贸站专题集群规划
+# Topic Clusters for B2B Manufacturing and Export Sites
 
-1. 先尝试 `seokit_load_profile({})`。按 [研究与导入](references/research-and-import.md) 提取与主题相关的产品线、目标市场、内容语言、买家角色、认证范围及术语。档案缺失、校验失败或工具不可用时进入通用模式。优先用用户本轮确认的信息，缺少企业证据时记录 `[TODO: add company proof]`。
-2. 用户提供 CSV 时，先用 `seokit_read_keyword_csv` 读取解析，再扩展候选词。按 [DataForSEO 使用方法](references/research-and-import.md#可选-dataforseo-数据) 检查 DataForSEO 是否可用，可用时优先获取候选词的目标市场搜索量与代表词的 Google 自然排名，缺失部分用公开搜索、网页抓取或已导入的 CSV 补充。按产品、采购任务与市场语言分组，结合搜索结果与已有页面判断哪些词应共用页面、哪些值得独立建页。对缺少可比 SERP 的分组标记为待验证。
-3. 用 [B2B 买家意图矩阵](references/buyer-intent-matrix.md) 分配目标词、采购任务、建议页型与优先级。先明确产品或品类 Hub 的职责，再为规格工艺、行业应用、选型对比或独立采购任务安排 Spoke。核对同一市场语言中的存量 URL 和关键词归属，优先复用满足需求的页面。
-4. 按 [Hub-Spoke 内链规则](references/hub-spoke-links.md) 规划双向入口、相关内容与询盘路径，检查孤立页、重复目标词、页面职责和发布依赖。
-5. 按 [输出约定](references/plan-output.md) 生成安全专题 slug，读取并更新该专题的 `clusters/<keyword-slug>-clusters.yaml`，再从同一份规划生成 `clusters/<keyword-slug>-clusters.md`。保留同专题其他市场语言的集群及其他专题文件。写后核对两份文件与内链指向，向用户返回路径、首批优先页及待验证项。
+1. Try `seokit_load_profile({})` first. Follow [research and import](references/research-and-import.md) to extract applicable product lines, markets, languages, buyer roles, certification scope, and terminology. Use generic mode on missing or invalid profiles or tool failure. Prefer facts confirmed by the user for this task and mark missing company evidence `[TODO: add company proof]`.
+2. Parse a supplied CSV with `seokit_read_keyword_csv` before expanding candidates. Check [optional DataForSEO data](references/research-and-import.md#optional-dataforseo-data) and prefer live, market-specific volumes and organic rankings when available. Supplement gaps with public search, fetched pages, or imported CSV. Group by product, buyer task, and market-language scope. Use search evidence and existing pages to decide which terms share a page. Mark grouping without comparable SERPs as provisional.
+3. Apply the [B2B buyer intent matrix](references/buyer-intent-matrix.md) to assign terms, tasks, page types, and priorities. Set each product or category hub's role before assigning specification, process, application, comparison, or procurement spokes. Check existing URLs and keyword ownership within the same scope. Reuse pages that meet the task.
+4. Follow the [hub-and-spoke linking rules](references/hub-spoke-links.md) for reciprocal links, related content, and inquiry paths. Check for orphan pages, duplicate target terms, role conflicts, and publication dependencies.
+5. Follow the [output specification](references/plan-output.md) for slug generation and editing `clusters/<keyword-slug>-clusters.yaml`. Generate `clusters/<keyword-slug>-clusters.md` from the same plan. Preserve other topics and other market-language clusters. Verify the saved files and link endpoints, then report paths, priority pages, and open checks.

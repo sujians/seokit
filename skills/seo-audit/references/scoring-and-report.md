@@ -1,39 +1,39 @@
-# 评分、优先级与报告
+# Scoring, Priorities, and Reporting
 
-## B2B 技术 SEO 与 GEO 权重
+## B2B technical SEO and GEO weights
 
-权重用于评估单页及其源站策略。先根据页面类型确定适用项目，再逐项记录得分和证据。产品页、应用页、工厂页和询盘页各自承担不同的采购任务。
+Use these weights for one page and its origin policy. Determine applicable checks from page type, then record scores and evidence. Product, application, factory, and inquiry pages serve different buyer tasks.
 
-| 维度 | 权重 | 检查项与分值 | 主要证据 |
+| Dimension | Weight | Checks and points | Primary evidence |
 | --- | ---: | --- | --- |
-| 可访问性与索引资格 | 25 | 最终 HTTPS 响应与可用 HTML 10。Googlebot 路径规则及索引指令 10。canonical 声明一致性 5。 | 状态、重定向、内容类型、匹配的 robots 规则、响应头、页头标签 |
-| 多语言与目标市场 | 15 | 页面主要语言、行业术语与目标市场意图一致 8。多版本页面的 hreflang 语言地区值、目标、回链和与 canonical 的一致性 7。 | 档案或用户指定市场、正文、HTML/HTTP 声明及实际访问的对应版本 |
-| 页内信号与导航 | 15 | title 和 description 与页面主题及意图一致 5。标题层级清晰且主标题能识别主题 5。重要图片替代文本与相关内部路径的可发现性 5。 | 页面元数据、标题、图片、链接及其上下文 |
-| 采购信息与可核实证据 | 20 | 支持当前采购任务的具体资料 10。关键参数或资质可追溯 5。下一步采购路径清晰 5。 | 产品型号、材料、单位、公差与条件、应用限制、认证适用范围或公开文件，以及样品、OEM/ODM 或询盘路径，按页面类型取证 |
-| 结构化数据 | 10 | 适用实体有语法正确且符合当前搜索政策的 JSON-LD 5。标记与可见内容一致，按实体检查 Product 的 additionalProperty、manufacturer、hasCertification 或 Organization 的 sameAs 5。 | JSON-LD 块数、校验问题路径、页面内容、组织实体与产品证据 |
-| GEO 可引用性 | 10 | 把 seokit_score_geo 的 0–100 分按比例折为 0–10 分。 | 直接答案、参数表与列表、数据与标准、语义清晰度分项及摘录 |
-| AI 检索抓取策略 | 5 | 对业务目标涉及的自动搜索爬虫，当前路径规则与确认的策略一致 5。 | OAI-SearchBot、Claude-SearchBot、PerplexityBot 等的匹配路径与已确认的检索目标 |
+| Access and index eligibility | 25 | Final HTTPS response and usable HTML (10). Googlebot path rules and indexing directives (10). Canonical consistency (5). | Status, redirects, content type, matching robots rules, headers, and HTML metadata |
+| Language and market | 15 | Primary language, industry terms, and market intent align (8). For multilingual pages, hreflang codes, targets, return links, and canonical consistency (7). | Profile or user-defined market, body, HTML or HTTP declarations, and checked variants |
+| On-page signals and navigation | 15 | Title and description fit topic and intent (5). Clear heading hierarchy and identifiable main topic (5). Useful alt text and discoverable related internal links (5). | Metadata, headings, images, links, and context |
+| Procurement information and verifiable evidence | 20 | Specific information for the buyer task (10). Traceable key specifications or qualifications (5). Clear procurement next step (5). | Models, materials, units, tolerances and conditions, application limits, certification scope or public documents, and sample, OEM/ODM, or inquiry paths as applicable |
+| Structured data | 10 | Syntactically valid JSON-LD aligned with current search policy for applicable entities (5). Visible content alignment and applicable Product additionalProperty, manufacturer, and hasCertification, or Organization sameAs (5). | JSON-LD count, validation issue paths, visible copy, and organization or product evidence |
+| GEO citability | 10 | Scale the seokit_score_geo score from 0–100 to 0–10. | Direct answers, tables and lists, data and standards, clarity subscores, and excerpts |
+| AI search crawl policy | 5 | Current path rules match confirmed policy for relevant automated search crawlers (5). | Matching paths for OAI-SearchBot, Claude-SearchBot, PerplexityBot, and others, and confirmed search goals |
 
-- 具备证据的离散检查项按通过 100%、部分通过 50%、失败 0% 计分。部分通过需要具体说明已通过和未达到的内容。适用项证据不足时记为「未验证」，例如只有 hreflang 声明、无法判断另一版本的状态或双向关系。单语言且没有对应地区版本时，hreflang 检查可记为「不适用」。未知的目标市场、页面归属或爬虫政策用「未验证」。
-- 已获分值为已验证检查项的得分之和。综合分为「已获分值 ÷ 已验证权重 × 100」，覆盖率为「已验证权重 ÷ 适用权重 × 100」，均保留一位小数。逐项列出实得分、权重、状态和证据。比如适用权重 93，已验证权重 80，得 60 分，报告综合分 75.0/100、覆盖率 86.0%。有未验证项时标注为局部评分。已验证权重为零时仅报告覆盖情况。多页采样逐页报告评分和范围。
-- HTML 截断、错误正文、验证挑战页或客户端渲染缺少主要内容时，将无法核实的页内项目记为未验证。HTTP、重定向和抓取策略仍可按已观测证据报告。GEO 工具分独立展示，说明它衡量页面文本的可引用性信号。标准编号、数值和归因命中需要结合来源、适用对象和条件核对。
-- 询盘产品可省略公开价格和 Offer。只在已核实且适合公开的情况下建议补入参数、制造商、认证或官方实体链接。缺少受支持的富媒体功能只影响对应搜索呈现。训练和按需访问政策、llms.txt 是否存在均作为策略观察。
+- Score verified checks as pass (100%), partial (50%), or fail (0%). Explain which criteria a partial result met and where it fell short. Mark applicable checks unverified when evidence is insufficient, for example when an hreflang declaration is available but the destination status or return relationship is unknown. Hreflang may be inapplicable on a single-language site with no regional alternatives. Mark unknown market, page ownership, and crawler policy unverified.
+- Sum points earned on verified checks. Calculate score as points earned ÷ verified weight × 100 and coverage as verified weight ÷ applicable weight × 100, both to one decimal place. Record points, weight, status, and evidence by check. For applicable weight 93, verified weight 80, and 60 points, report 75.0/100 and 86.0% coverage. Label scores with unverified checks partial. Report coverage only when verified weight is zero. For a sample of several pages, report scores and scope per page.
+- Mark on-page checks unverified when truncation, error or challenge responses, or client-side rendering prevent verification. Report observed HTTP, redirects, and crawl policy where available. Show the GEO tool score separately as a measure of textual citation signals. Verify standards, numbers, and attributions against scope, conditions, and sources.
+- Inquiry-only products may omit public price and Offer markup. Propose adding specifications, manufacturers, certifications, or official entity links only when verified and suitable for publication. Relate rich-result availability to its specific search presentation. Record training policy, on-demand access, and llms.txt presence as policy observations.
 
-## 优先级
+## Priorities
 
-| 优先级 | 触发依据 | 示例 |
+| Priority | Trigger | Example |
 | --- | --- | --- |
-| P0 阻断项 | 有证据表明目标页面当前无法访问，或已确认应收录的关键页面受到明确的抓取或索引阻断。 | 已确认在用的产品页返回 404 或持续 5xx，或其有效 noindex 与公开收录目标冲突。Googlebot 路径被阻止时指出受阻的是抓取。 |
-| P1 高收益项 | 影响目标市场发现、采购判断或询盘路径，且有可验证的修复对象。 | 实测语言版本回链错误，产品页缺少支持选型的单位或关键条件，JSON-LD 无法解析，目标 AI 搜索爬虫被意外阻止。 |
-| P2 优化项 | 有具体证据可改善表述、可访问性或可引用性。 | 重写含糊的标题，把相关规格和单位移入带表头的参数表，补充有信息价值的产品图替代文本。 |
+| P0 blocker | Evidence shows that a target is inaccessible or that an intended indexed page has a clear crawl or index blocker. | A confirmed active product page returns 404 or persistent 5xx, or an effective noindex conflicts with confirmed index goals. Identify a Googlebot path block as a crawl issue. |
+| P1 high impact | A verified problem affects market discovery, buying decisions, or an inquiry path. | A broken hreflang return link, missing critical units or conditions, invalid JSON-LD, or unintended restrictions on a target AI search crawler. |
+| P2 improvement | Evidence supports an improvement to wording, accessibility, or citability. | Rewrite a vague heading, move related specifications and units into a labeled table, or add informative alt text to a product image. |
 
-一次超时、429、访问挑战或政策意图不明时，报告本次现象与复验方法。P0 依据受影响任务和证据判定。合并同一根因造成的问题，并在等级内按业务影响排序。
+Report isolated timeouts, rate limits, access challenges, and unknown policy intent with retest steps. Base P0 on evidence and the affected task. Consolidate common causes and order findings within a tier by business impact.
 
-## 报告结构与文件路径
+## Report structure and file path
 
-1. **范围与结论**。记录时间和时区、输入与最终 URL、重定向、抽样页面、档案模式、目标市场及页面类型。先给影响最大的已证实发现。
-2. **检查与评分**。记录 HTTP、索引指令、canonical、hreflang、页内信号、采购证据、JSON-LD 和 GEO 的实际观察，并列出维度得分与覆盖率。AI 策略表注明源站、测试路径、爬虫用途、匹配规则、允许状态和策略判断。标注 robots.txt 与 llms.txt 各自的状态和最终地址。
-3. **P0 阻断项 / P1 高收益项 / P2 优化项**。每项列出受影响 URL 和具体响应字段、HTML 标签、规则或内容摘录，说明买家或搜索影响、修复动作和复验条件。该级无已确认问题时写「无已确认项」。
-4. **未验证事项与来源**。列出证据缺口、需要的验证方法、能公开引用的企业证据与权威来源链接。记录使用的工具失败或截断情况。
+1. **Scope and findings.** Record time and time zone, input and final URLs, redirects, sampled pages, profile mode, target market, and page type. Lead with the most important verified findings.
+2. **Checks and scores.** Report observed HTTP, index directives, canonical, hreflang, page signals, procurement evidence, JSON-LD, and GEO. Include dimension scores and coverage. Record origin, tested path, crawler role, matched rule, access result, and policy assessment. Include status and final URLs for robots.txt and llms.txt.
+3. **P0 blockers, P1 high-impact findings, and P2 improvements.** Include the affected URL and observed response field, tag, rule, or excerpt. Explain buyer or search impact, corrective action, and retest criteria. Mark a tier with zero verified findings as “None confirmed.”
+4. **Unverified items and sources.** List evidence gaps, checks needed, publicly citable company evidence, and authoritative sources. Note tool errors and truncation.
 
-将报告保存为当前项目的 `audits/<domain>-<date>.md`。从解析后的最终 URL 取小写 hostname，保留子域名，使用 ASCII 域名形式。最终 URL 不可得时使用原请求 hostname。去除 IPv6 方括号并把冒号替换为连字符。路径由该主机名和本次执行日期 YYYY-MM-DD 组成。文件已存在时追加带时间与 URL 的报告段落，保留当天已有记录。报告中仅保留相关响应字段与必要摘录，去掉令牌、凭据、会话标识和私人询盘信息。写入后核对文件和本次记录。
+Save to `audits/<domain>-<date>.md`. Use the lowercase ASCII hostname from the final URL, including its subdomain. If the final URL is unavailable, use the requested hostname. For IPv6, remove brackets and replace colons with hyphens. Use the run date in YYYY-MM-DD format. Append a timestamped entry with the URL when the same-day file exists. Include only relevant response fields and excerpts, and remove tokens, credentials, session identifiers, and private inquiry details. Read back the written entry.

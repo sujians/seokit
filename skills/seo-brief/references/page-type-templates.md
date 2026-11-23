@@ -1,47 +1,47 @@
-# B2B 技术与采购页型模板
+# B2B Technical and Procurement Page Templates
 
-每页围绕一个采购任务组织内容。按检索意图调整章节顺序和深度。结论块说明对象、建议、成立条件及限制。参数表统一单位和比较基准，给出可追溯的出处。缺失数据按 `[TODO: 需补的证据与适用范围]` 标记。
+Build each page around one buyer task. Order sections and set their depth based on search intent. State the subject, recommendation, conditions, and limits in the opening answer. Use comparable units and bases in tables and cite traceable sources. Mark missing factory materials `[Factory evidence needed: specific material and scope]`. List public technical facts that still need verification.
 
-## B2B 产品页
+## B2B Product Page
 
-适合工程师或采购用产品名、型号、材料或规格筛选候选产品。读者完成初筛后可提交询价或样品需求。
+For engineers and buyers shortlisting products by name, model, material, or specification before requesting a quote or sample.
 
-| 建议章节 | 写作任务与呈现方式 | 需核对的证据 |
+| Section | Writing task | Evidence to verify |
 |---|---|---|
-| 产品是什么，适用哪些工况 | 开头直接给出产品类别、适用场景和选型边界 | 档案或用户资料中的型号、用途和限制 |
-| 型号与技术规格 | 参数表按型号比较材质牌号、尺寸、单位、公差、工况或测试方法 | 图纸、规格书及修订号，材料标准单独核实 |
-| 质量与合规 | 说明采购可核验的证书、测试报告和追溯文件 | 证书编号、覆盖产品或工厂、状态与有效期 |
-| 供货与询价 | 给出已确认的 MOQ、样品和交期条件，再列询价必填项 | 供货政策、询价路径及适用型号和数量 |
+| Product and operating conditions | State the category, intended uses, and selection limits. | Verified models, uses, and limits in the profile or user materials. |
+| Models and specifications | Compare grades, dimensions, units, tolerances, conditions, or test methods by model. | Drawings, data sheets, and revisions. Verify material standards separately. |
+| Quality and compliance | Describe certificates, reports, and traceability records buyers can inspect. | Certificate IDs, covered products or factories, status, and validity. |
+| Supply and RFQ | State confirmed MOQ, sample, and lead time terms, then list RFQ inputs. | Supply policy, inquiry path, applicable models, and quantities. |
 
-## 工艺能力页
+## Manufacturing Process Capability Page
 
-适合制造、质量或供应商开发人员判断某工厂能否生产指定图纸，能否按要求验证和交付。
+For manufacturing, quality, or supplier development teams assessing whether a factory can meet a drawing, verify the parts, and deliver them.
 
-| 建议章节 | 写作任务与呈现方式 | 需核对的证据 |
+| Section | Writing task | Evidence to verify |
 |---|---|---|
-| 工艺适用范围 | 用直接结论说明适用的材质、几何、公差和批量条件 | 工艺及工厂资料，工艺原理另查公开来源 |
-| 工艺能力窗口 | 表列工序、设备或工装、材料、尺寸范围、公差及达成条件 | 制程能力数据、资源适用范围与测量条件 |
-| 打样、检验与量产 | 按顺序说明图纸审核、打样、检验及交付时的文件 | 用户提供或档案中对应的流程、检测方法和文件 |
-| 提交技术评审 | 给出图纸版本、关键尺寸、验收标准、批量和交付用途清单 | 已确认的受理入口及支持范围 |
+| Applicable work | State applicable materials, geometries, tolerances, and lot sizes. | Factory and process evidence. Verify process principles with public sources. |
+| Capability limits | Tabulate operations, equipment or tooling, materials, sizes, tolerances, and qualifying conditions. | Process capability data, resource scope, and measurement conditions. |
+| Samples, inspection, and production | Explain drawing review, sampling, testing, and delivery records in order. | Verified procedures, test methods, and documents. |
+| Request technical review | List drawing revision, critical dimensions, acceptance criteria, quantity, and intended use. | Verified review channel and scope. |
 
-## 选型对比页
+## Selection or Comparison Page
 
-适合比较同一应用下的材料、规格、工艺或方案。让读者能按已知工况缩小选择并找出还需实测的项目。
+For comparing materials, specifications, processes, or designs under the same application conditions and identifying checks that require testing.
 
-| 建议章节 | 写作任务与呈现方式 | 需核对的证据 |
+| Section | Writing task | Evidence to verify |
 |---|---|---|
-| 什么条件下选哪种方案 | 按典型工况写可独立引用的直接结论，说明限制 | 关键选择条件及对应的公开来源或型号资料 |
-| 对比基准与参数矩阵 | 表列各方案、指标、单位、试样或工况、来源与适用限制 | 现行标准、原始数据表和测试方法，可比数据按相同基准呈现 |
-| 权衡与例外 | 解释指标冲突、测试条件差异和需复测的情况 | 源数据限制、已确认的项目约束 |
-| 复核规格或样品 | 给出买家要向供应商确认的问题和建议复核项目 | 公开方法及与目标市场相关的要求 |
+| Which option fits which conditions | Give self-contained recommendations for typical operating conditions and state limits. | Decision criteria and cited public sources or model documents. |
+| Comparison basis and parameter table | List options, measurements, units, specimens or conditions, sources, and limits. | Current standards, primary data sheets, and methods. Align the comparison basis. |
+| Trade-offs and exceptions | Explain competing requirements, test differences, and when to retest. | Source limitations and confirmed project constraints. |
+| Verify specifications or samples | List questions to ask suppliers and checks to perform. | Public methods and relevant market requirements. |
 
-## 行业采购指南
+## Industry Procurement Guide
 
-适合采购、质量或合规人员从需求定义走到供应商筛选、询价与验收。
+For purchasing, quality, or compliance teams moving from requirements to supplier screening, RFQ, and acceptance.
 
-| 建议章节 | 写作任务与呈现方式 | 需核对的证据 |
+| Section | Writing task | Evidence to verify |
 |---|---|---|
-| 如何快速筛选 | 开头给出按应用、风险和目标市场筛选的直接结论 | 行业规范的适用范围及买家的实际场景 |
-| 规格与测试要求 | 用参数表把应用条件、关键指标、单位、方法和验收证据对应起来 | 标准发布方、监管机构及可核验的测试文件 |
-| 审核并比较供应商 | 对照资质范围、抽检、追溯、样品和量产条件 | 权威公开要求，点名工厂时用相应第一方资料 |
-| RFQ 与来料验收 | 按节点列询价字段、确认样及验收动作，并指出常见遗漏 | 买家文件和适用验收规范，经验做法标为建议 |
+| Initial screening | Explain how to shortlist by application, risk, and target market. | Industry requirements and buyer use case. |
+| Specifications and test requirements | Map conditions, metrics, units, test methods, and acceptance records. | Publishers, regulators, and verifiable test documents. |
+| Compare and qualify suppliers | Check certification scope, sampling, traceability, samples, and production conditions. | Authoritative requirements and first-party evidence for named factories. |
+| RFQ and incoming inspection | List inquiry inputs, sample approval, and acceptance actions. | Buyer documents and applicable acceptance standards. Label advice. |

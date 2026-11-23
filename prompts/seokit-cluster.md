@@ -1,10 +1,10 @@
 ---
-description: 为 B2B 制造与外贸站规划产品专题集群，可导入 CSV 词表并保存 YAML 和 Markdown
-argument-hint: "<product_or_topic> [CSV 文件]"
+description: Plan product keyword clusters for B2B manufacturing and export sites, import optional CSV data, and save YAML and Markdown
+argument-hint: "<product_or_topic> [CSV file]"
 ---
 
-按已注册的 `seo-keyword-cluster` 技能执行，并读取其参考文件。命令首个参数为 `${1:-未提供}`，其余参数为 `${@:2}`。
+Follow the registered `seo-keyword-cluster` skill and its references. The first argument is `${1:-not provided}`. Remaining arguments are `${@:2}`.
 
-先调用 `seokit_load_profile({})`，使用适用的目标市场、产品线、认证和术语表。档案缺失或无效时自动按通用模式继续。主题缺失时，请用户补充主题。可在命令中追加 CSV 路径，也可在对话中明确提供。主题和路径含空格时可各自加引号。若余下参数只是主题内容，和首个参数合并。提供 CSV 路径时先读取解析，再开展集群研究。
+Call `seokit_load_profile({})` first. Use the applicable markets, product lines, certifications, and glossary. Continue in generic mode if the profile is missing or invalid. Ask for the topic if it is missing. A CSV path can be passed on the command line or supplied in the conversation. Quote topics and paths containing spaces individually. If the remaining arguments are part of the topic, join them to the first argument. Read and parse any supplied CSV before cluster research.
 
-按买家任务和搜索证据分组，规划 Hub、Spoke、推荐页型、目标词、优先级和内链。按技能的输出约定生成安全专题 slug，将结构化结果保存到 `clusters/<keyword-slug>-clusters.yaml`，并按同一份数据生成 `clusters/<keyword-slug>-clusters.md`。核对文件后返回两份路径与首批实施页。
+Group terms by buyer task and search evidence. Plan hubs, spokes, page types, target terms, priorities, and links. Follow the skill's slug rules and save the plan to `clusters/<keyword-slug>-clusters.yaml`. Generate `clusters/<keyword-slug>-clusters.md` from the same data. Verify both files and report their paths and the first pages to implement.

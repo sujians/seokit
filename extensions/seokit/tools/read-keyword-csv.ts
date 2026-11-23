@@ -7,16 +7,17 @@ import { Type } from "typebox";
 import { analysisResult, objectOutput } from "./result.js";
 
 const MAX_CSV_BYTES = 2 * 1024 * 1024;
-const keywordHeaders = ["keyword", "keywords", "query", "search term", "search query", "term", "关键词", "关键字", "搜索词", "查询词"];
+// Unicode escapes preserve the Chinese aliases used in keyword exports.
+const keywordHeaders = ["keyword", "keywords", "query", "search term", "search query", "term", "\u5173\u952e\u8bcd", "\u5173\u952e\u5b57", "\u641c\u7d22\u8bcd", "\u67e5\u8be2\u8bcd"];
 const metadataHeaders = {
-  volume: ["volume", "search volume", "avg monthly searches", "average monthly searches", "搜索量", "月搜索量"],
-  difficulty: ["difficulty", "keyword difficulty", "kd", "kd%", "关键词难度"],
-  intent: ["intent", "search intent", "搜索意图"],
-  market: ["market", "country", "region", "location", "市场", "国家", "地区"],
-  language: ["language", "lang", "语言"],
-  currentUrl: ["url", "landing page", "current url", "ranking url", "着陆页"],
-  source: ["source", "provider", "来源"],
-  date: ["date", "as of", "日期"],
+  volume: ["volume", "search volume", "avg monthly searches", "average monthly searches", "\u641c\u7d22\u91cf", "\u6708\u641c\u7d22\u91cf"],
+  difficulty: ["difficulty", "keyword difficulty", "kd", "kd%", "\u5173\u952e\u8bcd\u96be\u5ea6"],
+  intent: ["intent", "search intent", "\u641c\u7d22\u610f\u56fe"],
+  market: ["market", "country", "region", "location", "\u5e02\u573a", "\u56fd\u5bb6", "\u5730\u533a"],
+  language: ["language", "lang", "\u8bed\u8a00"],
+  currentUrl: ["url", "landing page", "current url", "ranking url", "\u7740\u9646\u9875"],
+  source: ["source", "provider", "\u6765\u6e90"],
+  date: ["date", "as of", "\u65e5\u671f"],
 };
 const delimiters = { comma: ",", semicolon: ";", tab: "\t" };
 

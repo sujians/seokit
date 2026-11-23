@@ -1,12 +1,12 @@
 ---
-description: 研究 B2B 买家意图，生成技术或采购页的 Brief，核验成稿并保存 Markdown 草稿
+description: Research B2B buyer intent, build a technical or procurement brief, and review and save a Markdown draft
 argument-hint: "<topic_or_keyword>"
 ---
 
-文章主题为「${@:-未提供}」。如果没有主题，请用户补充主题后再开始。主题可以包含多个词。
+The topic is “${@:-not provided}”. Ask the user for a topic if it is missing. The topic can contain multiple words.
 
-1. 先调用 `seokit_load_profile({})`。使用适用的项目档案，并结合本次用户提供的资料。档案无法使用时按通用模式继续，注明此限制。
-2. 加载 `seo-brief` 技能及其页型模板。按目标市场和买家意图搜索，抓取并解析头部相关页面，将竞品观察转为可执行 Brief。
-3. 加载 `seo-write` 技能并按 Brief 写作。逐条核实公开技术事实和第一方数据，复核禁用词，调用 `seokit_score_geo` 自检。需要时自动补强一轮并复测。
-4. 将完整成稿写入当前项目的 `drafts/<slug>.md`。slug 由主题及必要的页型或市场词生成，使用小写 ASCII 字母、数字和单连字符。对于无可用 ASCII 词形的主题，使用可读的罗马化形式。先检查同名草稿，用户明确要求修订时更新该稿，其他同名冲突使用带数字后缀的可用文件名。文件与元数据中的 slug 保持一致。
-5. 回读确认草稿保存成功。回复给出路径、所选页型、Brief 要点、GEO 分数或未判定原因，以及仍待核实的证据和自检未通过项。
+1. Call `seokit_load_profile({})` first. Use the applicable profile and materials supplied by the user. If the profile is unusable, continue in generic mode and record that limitation.
+2. Load `seo-brief` and its references. Fetch and parse leading relevant pages in the target market. Produce all nine brief sections and hand the full brief to the writing workflow.
+3. Load `seo-write` and its references. Verify claims, draft the content, and complete the pre-save checks including `seokit_score_geo`. Make one automatic improvement pass and rescore if needed.
+4. After the checks pass, write the complete draft to `drafts/<slug>.md` in the current project. Use lowercase ASCII letters, digits, and single hyphens in the slug, based on the topic and any necessary page type or market qualifier. Use a readable romanization for topics without an ASCII form. Check for existing drafts. Update a matching draft if the user requested a revision. Otherwise use an available numeric suffix. Keep the filename and metadata slug consistent.
+5. Read back the saved draft. Report the path, page type, full brief, GEO score, and outstanding evidence. If a check remains blocked, pause writing or overwriting and return the full brief, reviewable content, and the reason.

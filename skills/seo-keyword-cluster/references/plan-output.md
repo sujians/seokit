@@ -1,8 +1,8 @@
-# 集群计划输出约定
+# Cluster Plan Output
 
-## 专题文件名
+## Topic filenames
 
-每个输入专题使用一对文件 `clusters/<keyword-slug>-clusters.yaml` 和 `clusters/<keyword-slug>-clusters.md`。以输入主题生成小写 slug，保留 Unicode 字母、数字及其组合标记，将连续空白、标点和路径分隔符替换为单连字符，限制长度并去掉首尾连字符。可用以下规则计算。
+Use `clusters/<keyword-slug>-clusters.yaml` and `clusters/<keyword-slug>-clusters.md` per input topic. Generate a lowercase slug from the topic, keeping Unicode letters, numbers, and combining marks. Replace runs of whitespace, punctuation, and path separators with a single hyphen, limit length, and trim leading and trailing hyphens.
 
 ```js
 function topicSlug(topic) {
@@ -12,11 +12,11 @@ function topicSlug(topic) {
 }
 ```
 
-例如 `Stainless Steel Enclosures` 使用 `stainless-steel-enclosures`，`不锈钢 工业机箱` 使用 `不锈钢-工业机箱`。写前检查基本 slug 及同名前缀的编号文件。以 YAML 的顶层 `topic` 匹配原主题，比较时仅统一 Unicode、大小写和空白。已有匹配时复用该文件对。没有匹配时选用首个两个文件名均空闲的 slug，冲突依次加 `-2`、`-3` 等后缀。保留无法确认归属的已有文件。发现多份 YAML 匹配同一主题时，保留文件并报告冲突。
+For example, `Stainless Steel Enclosures` becomes `stainless-steel-enclosures`. Check the base slug and numbered files with that prefix before writing. Match the YAML’s top-level `topic` against the input, normalizing only Unicode, case, and whitespace. Reuse the matching pair. If none match, use the first slug with both filenames available, appending `-2`, `-3`, and so on for collisions. Preserve files with unknown ownership. If multiple YAML files match, preserve them and report the conflict.
 
-## 专题 YAML
+## Topic YAML
 
-每份 YAML 保存 `schema_version: 1`、顶层 `topic`（保留用户输入的主题）和该专题的 `clusters` 列表。每个集群写明 `id`、`topic`、`markets`（地区列表或 `null`）、`language`（语言标签或 `null`）、`profile_mode`（`profile` 或 `generic`）、`updated_at`、`sources`、`pages`、`links` 和 `open_questions`。少量示例字段如下，真实计划按素材补齐。
+Store `schema_version: 1`, the original input as top-level `topic`, and a `clusters` list for that topic. Each cluster has `id`, `topic`, `markets` (regions or `null`), `language` (language tag or `null`), `profile_mode` (`profile` or `generic`), `updated_at`, `sources`, `pages`, `links`, and `open_questions`. Fill out the example fields below with actual evidence.
 
 ```yaml
 schema_version: 1
@@ -41,15 +41,15 @@ clusters:
         buyer_intent:
           category: procurement
           stage: BOFU
-          task: 筛选产品族并准备询价
+          task: Shortlist a product family and prepare an RFQ
         page_type: category_procurement
         action: create
         path: /products/stainless-steel-enclosures/
         priority: P1
-        priority_reason: 承接采购任务并为细分页提供入口
+        priority_reason: Supports procurement and provides access to supporting pages
         grouping_basis: intent_hypothesis
         evidence_refs: [seed]
-        verification_needed: ['[TODO: add company proof] 核对可公开的产品范围及询价入口']
+        verification_needed: ['[TODO: add company proof] Verify the publishable product range and RFQ path']
       - id: en-enclosures-comparison
         role: spoke
         title: 304 vs 316 Stainless Steel Enclosures
@@ -58,40 +58,40 @@ clusters:
         buyer_intent:
           category: comparison
           stage: MOFU
-          task: 根据工况选择材料方案
+          task: Select a material for the operating conditions
         page_type: comparison_guide
         action: create
         path: /resources/304-vs-316-stainless-steel-enclosures/
         priority: P2
-        priority_reason: 依赖品类入口及可引用的材料资料
+        priority_reason: Depends on the category page and citable material references
         grouping_basis: intent_hypothesis
         evidence_refs: [seed]
-        verification_needed: [核对材料性能口径与适用工况]
+        verification_needed: [Verify comparable material properties and operating conditions]
     links:
       - from: en-enclosures-hub
         to: en-enclosures-comparison
         type: hub_to_spoke
         anchor: Compare 304 and 316 enclosure materials
-        placement: 材料选项段落
+        placement: Material options section
       - from: en-enclosures-comparison
         to: en-enclosures-hub
         type: spoke_to_hub
         anchor: Explore stainless steel enclosure options
-        placement: 选型建议后的产品入口
-    open_questions: [确认目标市场和主要 SERP 页型]
+        placement: Product link after selection guidance
+    open_questions: [Confirm the target market and dominant SERP page types]
 ```
 
-- `id` 在对应集群或页面类型内全文件唯一，已存在的 ID 保持稳定。页型使用明确、可复用的名称，例如 `category_procurement`、`product_procurement`、`oem_capability`、`specification`、`process_guide`、`industry_solution`、`comparison_guide`。`buyer_intent.category` 对应 `procurement`、`engineering`、`application`、`comparison`。采购、工程和场景的 `stage` 分别为 `BOFU`、`MOFU-engineering`、`MOFU-application`，对比按主任务填 `MOFU` 或 `BOFU`。
-- `path` 记录已核对的 URL、建议的站内路径或待确认时的 `null`。`action` 让读者区分已规划新页面和可复用的存量页面。`grouping_basis` 根据实际证据取 `serp_overlap`、`serp_observation` 或 `intent_hypothesis`。规划时记录必要资料和待验证上市条件。集群可按需附 `excluded_keywords`，列词与原因。
-- `sources` 用 `id`、`type` 和 `reference` 标识来源。CSV 引用记录文件名和记录号，网页来源记录 URL，SERP 比较还应记录词对、市场、语言、设备、查询日期、结果来源和适用时的重合数。页面通过 `evidence_refs` 引用本集群来源。若输出词级指标，按词和市场保留来源及统计周期，未知值用 `null`，明确的 `0` 原样保留。
-- 同语言同 URL 面向多个相近市场时，把地区列入同一个 `markets`；查询意图或页面职责确有区别时规划独立路径。计划尚无市场信息时可使用 `null` 并列为待验证项。
+- Keep cluster IDs and page IDs unique within their respective types throughout the file. Preserve existing IDs. Use descriptive page types such as `category_procurement`, `product_procurement`, `oem_capability`, `specification`, `process_guide`, `industry_solution`, and `comparison_guide`. Use `procurement`, `engineering`, `application`, or `comparison` for `buyer_intent.category`. Stages are `BOFU`, `MOFU-engineering`, and `MOFU-application` for procurement, engineering, and application respectively. Choose `MOFU` or `BOFU` for comparisons based on the primary task.
+- Use `path` for a verified URL, proposed site path, or `null` when unknown. Set `action` to show whether the page will be created, reused, or updated. Set `grouping_basis` to `serp_overlap`, `serp_observation`, or `intent_hypothesis` based on the evidence. Record documentation and launch conditions that need verification. Use optional `excluded_keywords` for terms and reasons.
+- Identify `sources` by `id`, `type`, and `reference`. For CSVs, record filenames and record numbers. For pages, record URLs. For SERP comparisons, record query pairs, market, language, device, date, result source, and any supported overlap count. Use `evidence_refs` to reference sources in the cluster. For keyword-level metrics, retain source and period by keyword and market, use `null` for unknowns, and preserve explicit `0` values.
+- Put similar markets sharing one URL and language into the same `markets` list. Plan separate paths where query intent or page responsibility differs. Use `null` when the market is unknown and document the verification needed.
 
-## 专题 Markdown
+## Topic Markdown
 
-从校验后的完整 YAML 生成 Markdown。开头概括每个集群的主题、市场、语言、档案模式、CSV 覆盖与证据局限。按集群和优先级列出每个页面，包含建议路径或现有 URL、主要和辅助目标词、买家任务与意图阶段、建议页型、优先级及理由、所有计划中的出链目标。内链至少给出目标页面标题或路径；需要时补充锚文本与放置位置。最后列出首批实施顺序、上线依赖和待验证项。
+Generate Markdown from the complete, validated YAML. Start with each cluster’s topic, market, language, profile mode, CSV coverage, and evidence limits. List every page by cluster and priority with its proposed path or existing URL, primary and secondary terms, buyer task and stage, page type, priority and rationale, and all planned outbound links. Give the destination title or path and include anchor and placement details where needed. Close with the initial implementation order, launch dependencies, and open checks.
 
-## 更新与核对
+## Updating and verifying
 
-1. 按专题选定文件对并读取对应 YAML。同专题按目标市场和语言更新既有集群，保留该专题的其他市场语言与已确定的页面标识。清理因此失效的链接或明确替代目标。只写选定的专题文件对。遇到要更新的 YAML 损坏、版本不明或匹配不明确时，保留原文件并报告冲突。
-2. 写前核对 YAML 结构与字段，验证 Hub 数量、页面 ID、关键词归属、URL、证据引用和链接端点。用 YAML 解析器检查语法（若使用 shell，沿用 Ruby/Node 等环境中提供的 YAML 解析器，无需安装工具；也可用 JSON 语法输出 YAML 兼容文档）。含冒号、井号或易被解释为其他类型的词用引号包裹。确认 Markdown 的页面和出链与同一份计划一致。
-3. 先写 YAML，再写 Markdown。完成后读回两个文件，核对本次主题及保留的集群。Markdown 写入失败时从已保存的 YAML 重新生成并验证，仍未完成时说明哪个文件未更新。
+1. Select the matching topic file pair and read its YAML. Update clusters for the requested market and language, preserving other clusters in the topic and established page IDs. Remove stale links or specify replacements. Write only the selected pair. If the YAML is malformed, has an unknown version, or matches ambiguously, preserve it and report the conflict.
+2. Verify the YAML structure, fields, Hub count, page IDs, keyword ownership, URLs, evidence references, and link endpoints. Check syntax with an available YAML parser such as Ruby or Node, or use JSON syntax for a YAML-compatible document. Quote terms with colons, hashes, or values that could parse as another type. Verify that Markdown pages and links match the same plan.
+3. Write YAML first and Markdown second. Read both back to verify the topic and preserved clusters. If the Markdown write fails, regenerate it from the stored YAML and verify the result. Report which file is pending if the retry fails.

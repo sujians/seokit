@@ -7,6 +7,8 @@ All research, audits, and content must be grounded in target market, buyer inten
 
 ## Architecture & Conventions
 
+Use English in repository-maintained documentation, instructions, examples, code comments, and tool messages. Workflows may handle multilingual inputs and generate content in the requested locale.
+
 1. Follow official Pi package conventions (`extensions/`, `skills/`, `prompts/`). Always verify current Pi extension APIs against Pi's built-in docs before writing code.
 2. TypeScript first: implement core tools (`fetch_page`, `parse_seo`, `validate_schema`, `score_geo`, optional `dataforseo`) in `extensions/seokit/` with zero Python dependency for core usage.
 3. Lightweight state: store the project profile at `profile/profile.yaml`, topic plans under `clusters/`, audit reports under `audits/`, and working drafts under `drafts/`. Never build a heavy vault or database.

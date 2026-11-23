@@ -1,20 +1,20 @@
-# B2B 买家意图矩阵
+# B2B Buyer Intent Matrix
 
-先写出买家此刻要完成的任务，再判定漏斗阶段和页型。修饰词是候选信号，还需核对买家角色、结果页型和站点能提供的资料。同一词有混合意图时，明确主任务与次任务，给主任务一个目标页面。示例仅演示查询模式。
+Identify the task a buyer needs to complete, then determine funnel stage and page type. Check query modifiers against buyer role, result types, and available site evidence. For mixed intent, identify the primary and secondary tasks and assign one target page to the primary task. Examples illustrate query patterns.
 
-| 意图及阶段 | 买家任务和查询信号 | 建议页面类型 | 页面需要的证据及下一步 |
+| Intent and stage | Buyer task and query signals | Suggested page type | Evidence and next step |
 | --- | --- | --- | --- |
-| 商业采购 · BOFU | 采购或供应链筛选可询价的供应商。常见词包括 `supplier`、`manufacturer`、`OEM`、`bulk`、`RFQ`，例如 `stainless steel enclosure manufacturer`。 | 产品或品类采购页、独立 OEM/ODM 能力页。宽产品族且采购意图明显时可作为 Hub。 | 经核实的产品范围、资质适用范围、采购条件以及询价、样品或图纸评估入口。MOQ、产能、交期和定制能力需要证据。 |
-| 规格工艺 · MOFU-工程 | 工程师确认材料、尺寸、工艺、测试或装配是否满足设计输入。例如 `stainless steel enclosure wall thickness`。 | 规格页、参数指南、材料或工艺说明。能在同一交易页完整回答的单一属性可并入现有页面。 | 型号、参数与单位、公差、测量或测试条件、可公开图纸和适用边界。链接到相应产品或技术评审入口。 |
-| 行业应用方案 · MOFU-场景 | 设计或项目团队确认产品能否应对某行业、设备或工况。例如 `enclosures for outdoor monitoring equipment`。 | 行业应用页、场景解决方案页。不同工况或行业需要独立证据时才拆页。 | 使用环境、约束、选型逻辑与可核实案例。链接到相关规格及满足该场景的产品族。 |
-| 选型对比 · MOFU/BOFU | 工程与采购比较材料、方案或型号。例如 `304 vs 316 stainless steel enclosure`。形成技术候选清单时归 MOFU，即将选供应方案或询价时归 BOFU。 | 选型指南、材料或型号对比页。面向某个采购方案的对比可以接询价入口。 | 同口径的参数、工况、限制与取舍，说明适用条件并把读者引向各候选规格或对应采购页。 |
+| Procurement · BOFU | Purchasing or supply-chain teams shortlist suppliers that can quote. Signals include `supplier`, `manufacturer`, `OEM`, `bulk`, and `RFQ`, e.g. `stainless steel enclosure manufacturer`. | Product or category procurement page, or dedicated OEM/ODM capabilities page. A broad product family with clear purchase intent can support a Hub. | Verified product and qualification scope, purchasing terms, and a path to quote, sample, or drawing review. Verify MOQ, capacity, lead time, and custom capability. |
+| Specifications and processes · MOFU-engineering | Engineers check materials, dimensions, process, testing, or assembly against design inputs, e.g. `stainless steel enclosure wall thickness`. | Specification page, parameter guide, material guide, or process explanation. A single attribute can fit on the existing commercial page when that page can answer it fully. | Models, parameters and units, tolerances, measurement or test conditions, public drawings, and limits. Link to the applicable product or technical review. |
+| Industry applications · MOFU-application | Design or project teams assess fit for an industry, device, or operating condition, e.g. `enclosures for outdoor monitoring equipment`. | Industry or application solution page. Use separate pages when operating conditions or industries require distinct evidence. | Environment, constraints, selection criteria, and verifiable cases. Link to applicable specifications and product families. |
+| Comparison · MOFU or BOFU | Engineering and purchasing compare materials, approaches, or models, e.g. `304 vs 316 stainless steel enclosure`. Use MOFU for technical shortlisting and BOFU when selecting a supplier or preparing an RFQ. | Selection guide or material or model comparison. Link to an inquiry path when the comparison supports an immediate procurement decision. | Compare parameters, conditions, limits, and trade-offs on a common basis. State where each option fits and link to applicable specifications or procurement pages. |
 
-单独处理售后、品牌导航、消费零售与招聘词。这些词仅在明确服务当前 B2B 任务时进入计划，否则记录排除理由。法规、标准和材料性能用权威公开来源核实。出现标准号的搜索词只表明买家存在相关问题。将公司已获认证作为选题依据时核对认证对象、标准、适用产品与市场及有效状态。
+Review support, brand navigation, consumer retail, and recruitment terms separately. Include them only when they serve the current B2B task and record the reasons for exclusions. Verify regulations, standards, and material performance with authoritative public sources. A standard number in a query signals buyer interest. When company certification informs planning, verify the holder, standard, covered products and markets, and validity.
 
-## 页面优先级
+## Page priority
 
-- **P1 首批**。影响目标市场核心采购任务，或是其他页面上线依赖。通常先处理 Hub、关键采购页和解决主要选型阻碍的规格页。写明为什么先做及需要的证据。
-- **P2 扩展**。能回答明确的工程、应用或对比任务，并可接入已规划的产品路径。写明所依赖的页面或资料。
-- **P3 后续**。需求、可用证据或差异化尚需验证的页面。注明待满足的验证条件。凡关键证据缺失，另列证据阻塞；高价值页面可以保留 P1 审核优先级并等待资料后发布。
+- **P1 initial work.** Supports a core buying task or a launch dependency. Usually prioritize the Hub, major procurement pages, and specification pages that resolve selection barriers. Record the reason and required evidence.
+- **P2 expansion.** Answers a defined engineering, application, or comparison task and connects to a planned product path. Identify page and material dependencies.
+- **P3 follow-up.** Verify demand, evidence availability, or differentiation before proceeding. Record the conditions to verify. Flag evidence blockers separately. High-value pages may remain P1 for review while supporting records are gathered.
 
-优先级综合目标市场和产品线匹配、对采购决策或询盘的贡献、证据准备度、既有页面和内链依赖。同来源同市场的搜索量可辅助判断。记录排序理由，并按依赖安排同一批内的实施顺序。
+Prioritize by market and product fit, contribution to selection or inquiries, evidence readiness, existing pages, and internal link dependencies. Compare search volume only when the source and market are comparable. Record reasons and order implementation by dependencies.

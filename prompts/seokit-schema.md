@@ -1,10 +1,10 @@
 ---
-description: 为 B2B 制造业公开页面或本地草稿生成并校验 Schema.org JSON-LD
+description: Generate and validate Schema.org JSON-LD for a public B2B manufacturing page or a local draft
 argument-hint: "<url_or_draft> [draft_publish_url]"
 ---
 
-执行已注册的 `seo-schema` 技能，并读取 `references/b2b-schema-templates.md`。目标为「${1:-未提供}」，草稿发布 URL 为「${2:-未提供}」，其余参数为「${@:3}」。文件路径含空格时用引号。缺少目标、存在额外参数，或给公开页面另外指定发布 URL 时，说明用法并请用户补正。
+Follow the registered `seo-schema` skill and read `references/b2b-schema-templates.md`. The target is “${1:-not provided}”, the draft publication URL is “${2:-not provided}”, and the remaining arguments are “${@:3}”. Quote paths containing spaces. Explain the accepted arguments and request corrected input if the target is missing, there are extra arguments, or a separate publication URL was supplied for a public page.
 
-先调用 `seokit_load_profile({})` 读取 `profile/profile.yaml`。公开页面按参考中的流程用 `seokit_fetch_page` 与 `seokit_parse_seo` 串联取证，使用 Pi `codemode`（`pi --tools +codemode`）。本地 Markdown 或 HTML 草稿直接读取。根据可核实的页面内容和适用档案选择模板。询盘型设备省略价格与 `offers`。
+Call `seokit_load_profile({})` first to read `profile/profile.yaml`. For a public page, chain `seokit_fetch_page` and `seokit_parse_seo` in Pi `codemode` (`pi --tools +codemode`). Read local Markdown or HTML drafts directly. Choose templates using verified page content and the applicable profile. Omit pricing and `offers` for inquiry-only equipment.
 
-对最终 JSON 调用 `seokit_validate_schema`，达到技能规定的门槛后才保存到 `drafts/<slug>-schema.jsonld`。用户要求报告内嵌时，使用 `audits/` 下报告的可复制 JSON 代码块。回读核对后给出交付路径、类型和待补证据。
+Call `seokit_validate_schema` on the final JSON. Save to `drafts/<slug>-schema.jsonld` only after it meets the skill's validation gate. If the user requests inline delivery, use a copyable JSON block in a report under `audits/`. Read back the output and report its path, types, and outstanding evidence.

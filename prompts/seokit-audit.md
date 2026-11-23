@@ -1,10 +1,10 @@
 ---
-description: 体检 B2B 制造与外贸站的公开页面，并保存分优先级的 SEO/GEO 报告
+description: Audit a public page on a B2B manufacturing or export site and save a prioritized SEO/GEO report
 argument-hint: "<url>"
 ---
 
-按已注册的 `seo-audit` 技能执行，并读取它的三个参考文件。审计 URL 为 `${1:-未提供}`。先验证它是有效的公开 HTTP(S) URL，缺少或无效时请用户提供 URL。
+Follow the registered `seo-audit` skill and read its three references. The target is `${1:-not provided}`. Verify that it is a public HTTP(S) URL. Ask for a valid URL if needed.
 
-先尝试调用 `seokit_load_profile({})` 获取适用的业务上下文。档案缺失、校验失败或属于其他项目时自动进入通用模式，继续审计。按工具执行流在 `codemode` 中调用 `seokit_fetch_page`，再把同次响应的最终 URL 和 HTML 传给 `seokit_parse_seo`，依次将原始 JSON-LD 块传给 `seokit_validate_schema`、将 HTML 传给 `seokit_score_geo`。完整工具链需要启用 Pi `codemode`（`pi --tools +codemode`）。无法取得适用输入或工具不可用时，记录原因并完成仍可执行的检查。
+Try `seokit_load_profile({})` first. Use generic mode if the profile is missing, invalid, or unrelated. In Pi `codemode` (`pi --tools +codemode`), run `seokit_fetch_page`, pass the final URL and HTML to `seokit_parse_seo`, pass the raw JSON-LD blocks to `seokit_validate_schema`, and pass the same HTML to `seokit_score_geo`. Record unavailable evidence and continue with the remaining checks.
 
-根据评分参考输出 P0 阻断项、P1 高收益项和 P2 优化项。用用户的语言将完整报告写入当前项目的 `audits/<domain>-<date>.md`，核对写入结果后回复报告路径、审计范围和最重要的发现。
+Follow the scoring reference and group findings as P0 blockers, P1 high-impact changes, and P2 improvements. Write the full report in the user's language to `audits/<domain>-<date>.md` in the current project. Read it back and report the path, scope, and key findings.

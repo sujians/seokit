@@ -1,10 +1,10 @@
 ---
-description: 按目标市场的采购搜索习惯重写 Markdown 草稿，保留规格和认证证据并附 hreflang 建议
+description: Adapt a Markdown draft to a target market's procurement search habits, preserving specifications and certification evidence and adding hreflang guidance
 argument-hint: "<file_path> <target_locale>"
 ---
 
-源文件为「${1:-未提供}」，目标 locale 为「${2:-未提供}」。其余参数为「${@:3}」。路径含空格时用引号。缺少参数、存在额外参数或 locale 无效时，请用户提供正确输入。使用标准 BCP 47 语言标签，例如 `de-DE` 或 `en-US`。
+The source file is “${1:-not provided}”, the target locale is “${2:-not provided}”, and the remaining arguments are “${@:3}”. Quote paths containing spaces. Ask for corrected input if an argument is missing, there are extra arguments, or the locale is invalid. Use a standard BCP 47 language tag, such as `de-DE` or `en-US`.
 
-1. 加载 `seo-localize` 技能和两份参考。读取源 Markdown 并调用 `seokit_load_profile({})`，按目标市场采购搜索习惯和确认术语重写，逐项对照源稿规格、条件与认证证据。
-2. 将稿件保存为当前项目的 `drafts/<slug>.<locale>.md`。`<slug>` 取源文件的基本名，去掉 `.md`。源文件名若已有明确的语言后缀，则替换这一后缀。`<locale>` 使用规范化的 BCP 47 大小写，禁止把路径分隔符、`..` 等混入 locale。检查源路径与输出路径，禁止覆盖源文件。已有同名本地化稿时保持该稿，用户明确提出更新时才写入该路径。
-3. 稿件文末附上 hreflang 标签配置建议和本地化核查摘要。发布 URL 或回退策略未确认时按检查清单标注待定。回读检查输出，回复路径及仍待核实的规格、合规或发布项。
+1. Load `seo-localize` and its two references. Read the source Markdown and call `seokit_load_profile({})`. Rewrite for the target market's procurement searches and confirmed terminology. Check each specification, condition, and certification against the source.
+2. Save to `drafts/<slug>.<locale>.md` in the current project. Use the source basename without `.md` for the slug. Replace an existing, identifiable locale suffix. Normalize BCP 47 casing and exclude path separators and traversal components such as `..` from the locale. Check both paths and preserve the source file. Update an existing localized draft only when the user requests it.
+3. Append hreflang guidance and localization QA results. Mark publication URLs and fallback policies as pending when unconfirmed. Read back the output and report the path and any open specification, compliance, or publication items.
