@@ -46,6 +46,7 @@ try {
       assert.ok(!guidance.includes("\0"), `${path} should be Markdown text`);
     }
   }
+  await checkWriterHandoff();
   await checkWorkspacePaths();
 
   const loader = new DefaultResourceLoader({
@@ -90,7 +91,10 @@ try {
     assert.ok(prompts.find((prompt) => prompt.name === name)?.content.includes(path), `${name} should use ${path}`);
   }
   assert.ok(prompts.find(({ name }) => name === "seokit-cluster").content.includes("clusters/<keyword-slug>-clusters.md"));
-  assert.ok(prompts.find(({ name }) => name === "seokit-article").content.includes("drafts/<slug>-brief.md"));
+  const articlePrompt = prompts.find(({ name }) => name === "seokit-article").content;
+  for (const instruction of ["drafts/<slug>-brief.md", "seo-write", "seokit_score_geo", "factory measurement evidence"]) {
+    assert.ok(articlePrompt.includes(instruction), `seokit-article should carry ${instruction} into the draft handoff`);
+  }
   console.log(`PASS README, ${skills.length} skills, ${prompts.length} prompts, content references and workspace paths`);
   await assert.rejects(invoke("seokit_load_profile", {}), /Profile not found .*profile[/\\]profile\.yaml/);
   const profileFile = promptPaths["seokit-init"];
@@ -146,6 +150,21 @@ try {
   assert.equal(localizedGeo.signals.attributions, 1);
   console.log("PASS project profile, topic plans, audits, briefs, drafts, translations and multilingual CSV and GEO inputs");
 
+  const answer = "Enclosure fit requires checking the mounting pattern and usable interior depth against the approved drawing. Compare the mounting hole locations and the space reserved for cable bends, with connectors in place. According to the approved drawing, use its revision for both checks and request a fit review if either condition is unclear.";
+  const answerWords = [...new Intl.Segmenter("en", { granularity: "word" }).segment(answer)]
+    .filter(({ isWordLike }) => isWordLike).length;
+  assert.ok(answerWords >= 40 && answerWords <= 60);
+  const draftGeo = await run("seokit_score_geo", { html: `<main>
+    <h1>Enclosure fit checks</h1><h2>Mounting pattern and depth</h2><p>${answer}</p>
+    <table><thead><tr><th>Check</th><th>Acceptance basis</th></tr></thead>
+    <tbody><tr><td>Mounting hole locations</td><td>Approved drawing revision</td></tr></tbody></table>
+  </main>` });
+  assert.equal(draftGeo.signals.labeledTables, 1);
+  assert.equal(draftGeo.signals.tableDataRows, 1);
+  assert.equal(draftGeo.signals.directAnswerBlocks, 1);
+  assert.equal(draftGeo.signals.attributions, 1);
+  console.log("PASS brief-to-writer checklist, Chinese editorial strings and GEO draft signals");
+
   const howTo = JSON.stringify({ "@context": "https://schema.org", "@type": "HowTo" });
   const validate = (blocks, options) => run("seokit_validate_schema", { blocks, ...options });
   const defaultHowTo = await validate([howTo]);
@@ -182,6 +201,28 @@ try {
   console.log(`${seo.title} · ${seo.headings.length} headings · ${schema.blocksChecked} JSON-LD blocks · ${schema.issues.length} schema findings · GEO ${geo.score}/100`);
 } finally {
   await rm(cwd, { recursive: true, force: true });
+}
+
+async function checkWriterHandoff() {
+  const [brief, qa, guidance] = await Promise.all([
+    readFile(repoPath("skills/seo-brief/references/brief-output-template.md"), "utf8"),
+    readFile(repoPath("skills/seo-write/references/geo-citation-and-qa.md"), "utf8"),
+    readFile(repoPath("skills/seo-write/references/b2b-writing-and-anti-slop.md"), "utf8"),
+  ]);
+  const briefSections = Array.from(brief.matchAll(/^### (\d+\. .+)$/gm), ([, section]) => section);
+  const reviewedSections = Array.from(qa.matchAll(/^\| (\d+\. .+?) \|/gm), ([, section]) => section);
+  assert.ok(briefSections.length > 0);
+  assert.deepEqual(reviewedSections, briefSections, "Writer QA should check every numbered brief section in order");
+  const localizedSource = guidance.match(/```js\n([\s\S]*?)\n```/u)?.[1];
+  assert.ok(localizedSource, "Writer guidance should contain the Chinese editorial strings");
+  const { chinesePhrases, chineseFactoryPlaceholder } = runInNewContext(
+    `${localizedSource}\n;({ chinesePhrases, chineseFactoryPlaceholder })`, {}, { timeout: 1000 },
+  );
+  assert.equal(chineseFactoryPlaceholder, "[\u5f85\u5de5\u5382\u8865\u5145: \u5177\u4f53\u7f3a\u5931\u9879]");
+  for (const group of ["opening", "superiority", "promise"]) {
+    assert.ok(chinesePhrases[group].length >= 3);
+    assert.ok(chinesePhrases[group].every((phrase) => /^\p{Script=Han}+$/u.test(phrase)));
+  }
 }
 
 async function checkWorkspacePaths(directory = repoPath(".")) {
