@@ -25,7 +25,7 @@ type Task = {
   description: string;
   costMicros: number;
   units: string;
-  project: (rows: ApiObject[]) => JsonValue;
+  project: (rows: ApiObject[], dispatcher?: Dispatcher, signal?: AbortSignal) => JsonValue | Promise<JsonValue>;
 };
 
 const dryRunOption = Type.Optional(Type.Boolean({ description: "Estimate offline and report credential availability without making any API request." }));
@@ -101,7 +101,7 @@ async function postTask(endpoint: Endpoint, task: Task, authorization: string, d
     if (result.status_code !== 20000) {
       return { costUsd, error: `DataForSEO task failed (status ${number(result.status_code) ?? "unknown"}).` };
     }
-    return { costUsd, data: task.project(rows(result.result)) };
+    return { costUsd, data: await task.project(rows(result.result), dispatcher, signal) };
   } catch {
     const error = signal?.aborted ? "DataForSEO request cancelled." : timeout.aborted
       ? "DataForSEO request timed out." : "DataForSEO request or response processing failed.";
@@ -237,6 +237,108 @@ export const dataForSeoKeywordsTool = defineTool({
 
 const searchOperator = /\b(?:allinanchor|allintext|allintitle|allinurl|cache|define|filetype|id|inanchor|info|intext|intitle|inurl|link|site):/gi;
 
+// Google Search hosts from https://www.google.com/supported_domains.
+const googleSearchSuffixes = new Set((
+  "com ad ae al am as at az ba be bf bg bi bj bs bt by ca cat cd cf cg ch ci cl cm cn cv cz de dj dk dm dz ee es fi fm fr ga ge gg gl gm gr gy hn hr ht hu ie im iq is it je jo ki kg kz la li lk lt lu lv md me mg mk ml mn mu mv mw ne nl no nr nu pl pn ps pt ro rs ru rw sc se sh si sk sm sn so sr st td tg tl tm tn to tt vu ws " +
+  "co.ao co.bw co.ck co.cr co.id co.il co.in co.jp co.ke co.kr co.ls co.ma co.mz co.nz co.th co.tz co.ug co.uk co.uz co.ve co.vi co.za co.zm co.zw " +
+  "com.af com.ag com.ar com.au com.bd com.bh com.bn com.bo com.br com.bz com.co com.cu com.cy com.do com.ec com.eg com.et com.fj com.gh com.gi com.gt com.hk com.jm com.kh com.kw com.lb com.ly com.mm com.mt com.mx com.my com.na com.ng com.ni com.np com.om com.pa com.pe com.pg com.ph com.pk com.pr com.py com.qa com.sa com.sb com.sg com.sl com.sv com.tj com.tr com.tw com.ua com.uy com.vc com.vn"
+).split(" "));
+
+function normalizedHostname(hostname: string) {
+  return hostname.replace(/^www\./, "").replace(/\.$/, "");
+}
+
+function isDomainName(domain: string) {
+  return domain.length <= 253 && domain.includes(".") && !isIP(domain) &&
+    domain.split(".").every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label));
+}
+
+function isGoogleSearchHost(hostname: string) {
+  const host = normalizedHostname(hostname);
+  return host.startsWith("google.") && googleSearchSuffixes.has(host.slice("google.".length));
+}
+
+function googleGotoUrl(input: string) {
+  const value = input.trim();
+  const url = URL.parse(value, value.startsWith("/") ? "https://www.google.com" : undefined);
+  if (!url || !/^https?:$/.test(url.protocol) || !isGoogleSearchHost(url.hostname) ||
+    url.pathname !== "/goto" || !url.searchParams.has("url")) return null;
+  url.hash = "";
+  return url;
+}
+
+async function resolveGotoUrlLocally(url: URL, dispatcher?: Dispatcher, signal?: AbortSignal) {
+  if (url.port || url.username || url.password || !url.searchParams.get("url") || signal?.aborted) return null;
+  const timeout = AbortSignal.timeout(5_000);
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "manual",
+      headers: { "User-Agent": "seokit/0.1 (Google SERP link resolution)" },
+      dispatcher,
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    });
+    const location = response.headers.get("location");
+    void response.body?.cancel().catch(() => {});
+    if (response.status < 300 || response.status >= 400 || !location) return null;
+
+    const target = URL.parse(location, url);
+    if (!target || !/^https?:$/.test(target.protocol) || target.username || target.password) return null;
+    if (isGoogleSearchHost(target.hostname) && /^\/(?:goto|sorry|url)(?:\/|$)/.test(target.pathname)) return null;
+    if (target.hostname === "consent.google.com" || target.hostname === "sorry.google.com") return null;
+    if (target.searchParams.has("srsltid")) target.searchParams.delete("srsltid");
+    return { url: target.href, domain: normalizedHostname(target.hostname) };
+  } catch {
+    return null;
+  }
+}
+
+type GotoResolution = Awaited<ReturnType<typeof resolveGotoUrlLocally>>;
+
+function breadcrumbHostname(value: unknown) {
+  const first = string(value)?.trim().split(/[\s›»>]/, 1)[0];
+  if (!first) return null;
+  const url = URL.parse(/^https?:\/\//i.test(first) ? first : `https://${first}`);
+  if (!url || url.username || url.password) return null;
+  const host = normalizedHostname(url.hostname);
+  return isDomainName(host) ? host : null;
+}
+
+function unresolvedDomain(item: ApiObject) {
+  const breadcrumb = breadcrumbHostname(item.breadcrumb);
+  if (breadcrumb && !isGoogleSearchHost(breadcrumb)) return breadcrumb;
+  const websiteName = string(item.website_name)?.trim();
+  const host = breadcrumbHostname(websiteName);
+  return host && isGoogleSearchHost(host) ? null : host || websiteName || null;
+}
+
+async function organicResults(items: ApiObject[], topN: number, cache: Map<string, GotoResolution>, dispatcher?: Dispatcher, signal?: AbortSignal) {
+  const top = items.flatMap((item) => item.type === "organic" && typeof item.url === "string" && typeof item.rank_group === "number"
+    ? [{ item, url: item.url, rank: item.rank_group }] : [])
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, topN)
+    .map((entry) => ({ ...entry, goto: googleGotoUrl(entry.url) }));
+  const pending = new Map<string, URL>();
+  for (const { goto } of top) {
+    if (goto && !cache.has(goto.href)) pending.set(goto.href, goto);
+  }
+
+  const work = pending.values();
+  await Promise.all(Array.from({ length: Math.min(4, pending.size) }, async () => {
+    for (const goto of work) {
+      if (signal?.aborted) break;
+      cache.set(goto.href, await resolveGotoUrlLocally(goto, dispatcher, signal));
+    }
+  }));
+
+  return top.map<JsonValue>(({ item, url, rank, goto }) => {
+    const entry = { rank, absoluteRank: number(item.rank_absolute), url, title: string(item.title), domain: string(item.domain) };
+    if (!goto) return entry;
+    const resolved = cache.get(goto.href);
+    return resolved ? { ...entry, ...resolved } : { ...entry, domain: unresolvedDomain(item), unresolved_goto: true };
+  });
+}
+
 export const dataForSeoSerpTool = defineTool({
   name: "seokit_dataforseo_serp",
   label: "DataForSEO Google organic rankings",
@@ -250,6 +352,7 @@ export const dataForSeoSerpTool = defineTool({
   }, { additionalProperties: false }),
   outputSchema: objectOutput,
   async execute(_id, { location, language_code, keywords, top_n = 10, device = "desktop", dry_run }, signal, _onUpdate, ctx) {
+    const gotoCache = new Map<string, GotoResolution>();
     return runBatch("serp/google/organic/live/regular", dry_run ?? false, () => {
       const scope = market(location, language_code);
       const pages = Math.ceil(top_n / 10);
@@ -261,15 +364,10 @@ export const dataForSeoSerpTool = defineTool({
           description: `${keyword} (${String(location).trim()} / ${language_code} / ${device})`,
           units: `${pages} page(s) × $0.002${operatorCount ? ` × 5^${operatorCount} for search operators` : ""}`,
           costMicros: pages * 2_000 * 5 ** operatorCount,
-          project: ([result]) => ({
+          project: async ([result], dispatcher, signal) => ({
             ...scope, keyword, device, requestedTopN: top_n,
             observedAt: string(result?.datetime), searchUrl: string(result?.check_url),
-            organic: rows(result ? result.items : null)
-              .flatMap((item) => item.type === "organic" && typeof item.url === "string" && typeof item.rank_group === "number"
-                ? [{ rank: item.rank_group, absoluteRank: number(item.rank_absolute), url: item.url, title: string(item.title), domain: string(item.domain) }]
-                : [])
-              .sort((a, b) => a.rank - b.rank)
-              .slice(0, top_n),
+            organic: await organicResults(rows(result ? result.items : null), top_n, gotoCache, dispatcher, signal),
           }),
         };
       });
@@ -280,11 +378,8 @@ export const dataForSeoSerpTool = defineTool({
 function domainName(input: string) {
   const value = cleanText(input, "Domain");
   if (!/^[\p{L}\p{M}\p{N}.-]+$/u.test(value)) throw new Error("Use a domain or subdomain without a scheme, path, or port.");
-  const domain = domainToASCII(value).replace(/^www\./, "").replace(/\.$/, "");
-  if (domain.length > 253 || !domain.includes(".") || isIP(domain) ||
-    domain.split(".").some((label) => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) {
-    throw new Error("Use a valid domain or subdomain.");
-  }
+  const domain = normalizedHostname(domainToASCII(value));
+  if (!isDomainName(domain)) throw new Error("Use a valid domain or subdomain.");
   return domain;
 }
 

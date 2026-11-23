@@ -98,7 +98,7 @@ try {
   console.log("PASS project profile, topic plans, audits, drafts, translations and CSV import");
 
   await checkDataForSeo(invoke, writeFile);
-  console.log("PASS DataForSEO credential parsing, precedence and sanitized output (mock API)");
+  console.log("PASS DataForSEO credentials and Google goto resolution (mock API and GET requests)");
 
   const page = await run("seokit_fetch_page", { url: process.argv[2] ?? "https://schema.org/Product" });
   assert.ok(page.status >= 200 && page.status < 300 && page.html && !page.truncated);
@@ -180,6 +180,7 @@ async function checkDataForSeo(invoke, writeFile) {
     process.env[loginKey] = envLogin;
     await request(envLogin, envPassword);
     await request(envLogin, envPassword, 401);
+    await checkGoogleGoto(mock, runProvider, market);
     process.env[loginKey] = "";
     assert.deepEqual((await runProvider("keywords", args)).missingEnv, [loginKey]);
   } finally {
@@ -190,4 +191,52 @@ async function checkDataForSeo(invoke, writeFile) {
     setGlobalDispatcher(dispatcher);
     await mock.close();
   }
+}
+
+async function checkGoogleGoto(mock, runProvider, market) {
+  const google = "https://www.google.com";
+  const regionalGoogle = "https://www.google.co.uk";
+  const redirect = "/goto?url=CAESredirect";
+  const challenge = "/goto?url=CAESchallenge";
+  const rateLimited = "/goto?url=CAESrateLimited";
+  const redirectTarget = "https://www.Example.com/products?srsltid=abc&size=12&srsltid=def#specs";
+  const organic = (rank_group, url, fields = {}) => ({ type: "organic", rank_group, url, domain: "google.com", ...fields });
+  const items = [
+    organic(7, "/goto?url=CAESoutsideTopN"),
+    organic(4, `${regionalGoogle}${rateLimited}`, { breadcrumb: "www.metals.example › Materials" }),
+    { type: "paid", rank_group: 1, url: "/goto?url=CAESpaid" },
+    organic(2, `${google}${challenge}`, { breadcrumb: "https://www.parts.example/en › Parts", website_name: "Other name" }),
+    organic(3, `${google}${redirect}`),
+    organic(1, redirect),
+    organic(5, `${regionalGoogle}${rateLimited}`, { breadcrumb: "... › Catalog", website_name: "Fixture Fabrication" }),
+    organic(6, "https://direct.example/page", { domain: "direct.example" }),
+  ];
+  mock.enableCallHistory();
+  mock.get("https://api.dataforseo.com")
+    .intercept({ path: "/v3/serp/google/organic/live/regular", method: "POST" })
+    .reply(200, { status_code: 20000, cost: 0.002, tasks: [{ status_code: 20000, result: [{ items }] }] });
+  const search = mock.get(google);
+  search.intercept({ path: redirect, method: "GET", headers: { "user-agent": /seokit/ } })
+    .reply(302, "", { headers: { location: redirectTarget } });
+  search.intercept({ path: challenge, method: "GET" }).reply(200, "Verification page");
+  mock.get(regionalGoogle).intercept({ path: rateLimited, method: "GET" }).reply(429, "Too many requests");
+
+  const result = await runProvider("serp", { ...market, keywords: ["enclosures"], top_n: 6 });
+  assert.equal(result.status, "ok");
+  mock.assertNoPendingInterceptors();
+  assert.deepEqual(result.results[0].organic.map(({ rank, url, domain, unresolved_goto }) => [rank, url, domain, unresolved_goto]), [
+    [1, "https://www.example.com/products?size=12#specs", "example.com", undefined],
+    [2, `${google}${challenge}`, "parts.example", true],
+    [3, "https://www.example.com/products?size=12#specs", "example.com", undefined],
+    [4, `${regionalGoogle}${rateLimited}`, "metals.example", true],
+    [5, `${regionalGoogle}${rateLimited}`, "Fixture Fabrication", true],
+    [6, "https://direct.example/page", "direct.example", undefined],
+  ]);
+  const calls = mock.getCallHistory().calls();
+  assert.equal(calls.filter(({ method }) => method === "POST").length, 1);
+  assert.deepEqual(calls.filter(({ method }) => method !== "POST").map(({ method, fullUrl }) => `${method} ${fullUrl}`).sort(), [
+    `GET ${google}${challenge}`,
+    `GET ${google}${redirect}`,
+    `GET ${regionalGoogle}${rateLimited}`,
+  ].sort());
 }
