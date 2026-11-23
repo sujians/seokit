@@ -1,50 +1,50 @@
 # B2B Brief Output Template
 
-Use these sections in order. Replace example labels with target-language content and cite the actual sources. Give queries, pages, gaps, terms, questions, assets, evidence, and outline sections short IDs. Reference those IDs across tables. Keep unknowns explicit and record a verification action for each material open item.
+Use these sections to give the writer a readable plan. Keep notes as short as the topic allows. Link sources and name the relevant headings or claims in plain language. Use short IDs only when they simplify a reference shared across sections. Record material unknowns and their next action.
 
 ## Content Brief — [primary query]
 
 ### 1. Page Task and Search Intent
 
-- Primary query, buyer role and knowledge level, market, language, buyer stage, decision, and next action.
+- Primary query, reader role and knowledge level, market, language, core search question, and next action.
 - Search intent, B2B intent category, dominant result formats, confidence, and reasons for choosing the page type.
 - Create or update mode, current page or proposed site path, cluster and page ID, hub or spoke role, and applicable profile or generic-mode limits.
-- Research scope with query ID, query, provider or search location, language, device, date, and any observed SERP feature. Note optional keyword metrics and their scope.
+- Research scope with query, provider or search location, language, device, date, and any observed SERP feature. Note optional keyword metrics and their scope.
 
 ### 2. SERP and Competitor Structure
 
-| Page ID, query and organic rank | Final URL, role and format | Main H2s in order and relevant H3s | Estimated main prose and basis | Technical depth, evidence, assets and CTA | Coverage or failure |
-| --- | --- | --- | --- | --- | --- |
+| Query and organic rank | Final URL and format | Main H2s and relevant H3s | Technical depth, evidence, assets and CTA | Coverage or failure |
+| --- | --- | --- | --- | --- |
 
-Record eligible, attempted, fully inspected, partly inspected, and unavailable counts. List skipped or supplemental pages with the reason. Include the current-page inventory in update mode and record what to retain, strengthen, and add. State the comparable competitor length range, median and sample size, or why they are unknown.
+Summarize the scope and limitations of the sample. Include the current-page inventory in update mode and record what to retain, strengthen, and add. Comparable prose lengths are optional context. Where forums, dead links or irrelevant redirects, listings, or incomplete articles dominate, describe the weak sample and base article length on the sections required to cover the core sub-intents.
 
 ### 3. Gaps and Information Gain
 
-| Gap ID and buyer decision | Observed page IDs and locations | Gap dimension and coverage | Impact, competitive advantage and evidence effort | Priority and planned section |
-| --- | --- | --- | --- | --- |
+| Reader question or gap | Observed pages and headings | What the planned section adds |
+| --- | --- | --- |
 
-State the specific new decision aid or insight, what the inspected pages provide, what the proposed page adds, and the evidence that will support it. Reference its gap, assets, and outline sections. Give a sourced alternative or a clear dependency when the preferred gain needs unavailable factory proof.
+State the new explanation, worked example, or decision aid and the source it needs, if any. If a factory-specific example needs evidence, plan a public-method example or checklist that still serves the reader.
 
 ### 4. Search Terms and Technical Entities
 
-| Term ID and role | Preferred target-language term, synonym or abbreviation | Buyer relevance and source | Outline section and placement | Verification or scope note |
+| Term and role | Preferred target-language term, synonym or abbreviation | Reader relevance and source | Outline section and placement | Scope note |
 | --- | --- | --- | --- | --- |
 
 Cover the primary query, relevant secondary queries, and needed technical terms. Include entities such as products, processes, materials, standards, parameter names, units, and application conditions as applicable. Flag terms that imply an unverified capability or certification. Use the profile glossary where applicable.
 
 ### 5. PAA and Procurement Objections
 
-| Question ID and wording | Observed PAA, buyer record, public source, or inference | Buyer role, decision and conditions | Answer direction, evidence IDs and placement |
-| --- | --- | --- | --- |
+| Question | Observed PAA, buyer record, public source, or inference | Answer direction and placement |
+| --- | --- | --- |
 
-Cite dates and query scope for observed PAA. Consider applicable objections about operating conditions, throughput, voltage, tolerances, certification, substitutions, MOQ, lead time, warranty, and after-sales support. Mark unverified terms or offers. Assign questions to the decision section, table, checklist, or FAQ that will answer them.
+Record dates and query scope for observed PAA. Prioritize the technical questions and procurement objections that matter for the topic. Plan a short standalone FAQ by default when questions recur or readers commonly confuse versions or concepts. Plan direct 40–60-word answers and keep essential explanations in the main sections as well.
 
 ### 6. Tables, Visuals, and Interactive Assets
 
-| Asset ID, type and section | Decision it supports | Rows or inputs, outputs, units and valid conditions | Source, owner, permissions and status | Caption, alt text or accessible fallback notes |
+| Asset and section | Decision it supports | Rows or inputs, outputs, units and valid conditions | Source and status | Caption, alt text or accessible fallback notes |
 | --- | --- | --- | --- | --- |
 
-Plan at least one meaningful parameter table with headers and data rows. Use a conditions or acceptance-criteria table when comparable measurements are unavailable. Add relevant dimensioned drawings, installation diagrams, inspection images, charts, or RFQ worksheets. For a useful selector or calculator, specify inputs, assumptions, valid ranges, source, outputs, and a static equivalent. Flag approval, redaction, and development needs. Mark other assets optional when the table and text cover the task.
+Plan a meaningful table when it helps readers compare parameters, understand defects, or apply acceptance criteria. Use public methods for a generic checklist or comparison and label illustrative values. A customer work order is needed only if the draft makes claims that rely on it. Add relevant dimensioned drawings, installation diagrams, inspection images, charts, or RFQ worksheets. For a useful selector or calculator, specify inputs, assumptions, valid ranges, source, outputs, and a static equivalent. Flag approval, redaction, and development needs. Mark other assets optional when the table and text cover the task.
 
 ### 7. H1, Title, Meta Description, and Page Path
 
@@ -62,21 +62,20 @@ Validate `links[].from` and `links[].to` against `pages[].id` in the matched clu
 
 ### 9. H2/H3 Outline for seo-write
 
-Record the proposed total prose range, language and counting unit, competitor baseline or buyer-task estimate, and required table, FAQ, or other asset depth. List the H2s in reader decision order with their H3s immediately below. Give each H2 a working prose range and use H3 allocations as subdivisions when they are useful. Exclude tables and other nonprose assets from the prose budget.
+List H2s and H3s in reader order. Estimate depth from the rules, worked examples, tables, and questions each section needs. Use flexible prose ranges where they help. With a weak SERP, the sections needed to cover all core sub-intents determine the length. For informational topics, allocate at least 80% to core technical content, including technical FAQ answers. Keep conversion content at or below 20%, preferably 10–15%, counting DFM handoff, procurement submission checklists, service descriptions, and inquiry CTAs. For procurement guides, product pages, and selection comparisons, prioritize objective parameters and selection logic and trim supplier workflow copy.
 
-| Section ID, heading and level | Update action | Buyer question, proposed opening answer and limits | Approximate prose budget and format | Term, gap, objection, asset and evidence IDs | Anchor, CTA or next action |
-| --- | --- | --- | --- | --- | --- |
+Place any standalone FAQ after the technical sections and the concise DFM or procurement handoff, immediately before the closing CTA when present.
 
-Specify the answer and verification needed for decision-oriented H2s. Assign verified terms and source requirements to their sections. Identify where tables, concise answers, FAQ, or acceptance steps belong. Preserve the buyer flow when inserting new material into an existing page.
+| H2 or H3 | Reader question and planned answer | Example, format, source note, or next action |
+| --- | --- | --- |
+
+For updates, mark sections to retain, strengthen, or add. Give the writer enough detail to explain rules, limits, and practical examples without reconstructing the research.
 
 ### 10. Evidence Handoff for seo-write
 
-| Evidence ID and outline section | Claim or decision it supports | Track and source or requested material | Scope, revision or date and disclosure | Status and verification action |
-| --- | --- | --- | --- | --- |
-
-- **Public technical facts:** Identify what needs authoritative verification, such as a standard's edition, a material property under stated conditions, or the applicable test procedure. Identify the source or the publication to obtain.
-- **First-party factory claims:** Plan 2–3 specific proof items. Cite verified profile fields or user material and the covered product, plant, lot, method, and publication permission where relevant. Use `[Factory evidence needed: specific material and scope]` for missing proof. Keep private material out of public copy.
-- **Review and blockers:** List confirmed reviewer roles or credentials when available, approval or recheck dates, asset and link dependencies, and what blocks a claim or publication. Use the outline, terminology, metadata, links, assets, and evidence tables as the drafting contract. Apply draft QA in `seo-write`.
+- **Established industry knowledge:** Explain common designation syntax and suffix conventions, formula concepts, rotation rules, and familiar defect mechanisms in detail. Plan original worked examples and practical tables or checklists. Use a short note to check the applicable edition and product data sheet when conventions vary. Avoid reproducing complete protected standards tables.
+- **Specific public facts:** Verify edition-specific clauses and limits, quantitative material properties, formal test requirements, and regulatory obligations against authoritative sources. Put a short source note by the claim or planned section. When exact requirements are inaccessible, hand off the public explanation and identify the specific rule or value to verify.
+- **Factory-specific claims:** Use `profile/profile.yaml` or user-provided materials for factory yield, tolerance capability, lead time, certificate numbers, and customer cases. Note relevant scope and disclosure limits. Use `[Factory evidence needed: specific material and scope]` for missing proof. Identify optional evidence that can follow a complete draft. Keep private material in the working notes.
 
 ### 11. Schema Handoff for seo-schema
 
@@ -88,9 +87,9 @@ Recommend only types relevant to the planned page and supported by the [page typ
 ## Delivery checklist
 
 - The site can credibly cover the page task and the cluster has a clear page owner, or ownership remains an explicit open item. An update records retained content and the current URL.
-- Research shows scope and actual coverage. Evidence-backed observations support the format and proposed depth. Comparable length estimates share a basis. Unknowns have a verification action.
-- The information gain is specific and grounded in the inspected sample. Priority gaps, accepted buyer questions, planned assets, and evidence items point to outline sections. Outline budgets broadly reconcile with the total range.
+- Research shows actual coverage and limitations. The outline covers the core questions at the depth they need, including a standalone FAQ when recurring confusion warrants one. Check the technical and conversion shares for informational topics and the closing placement of any standalone FAQ.
+- The outline specifies the new explanation or decision aid and names sources and assets where needed. Use section names for handoff notes.
 - Metadata, terminology, CTA, and link targets suit the buyer and market. Verified destinations and pending paths are identifiable. Parameter tables specify conditions, units, and sources.
-- The evidence list distinguishes public claims from first-party claims. All first-party claims have applicable proof or specific placeholders. Schema rows name visible-content and evidence prerequisites.
+- The brief distinguishes established industry knowledge, specific public facts, and factory claims. Factory claims have applicable proof or specific placeholders. Schema rows name visible-content and evidence prerequisites.
 - Set a shared artifact `<slug>` for the brief and, when writing follows, the draft. Use lowercase ASCII letters, digits, and single hyphens. Base it on the topic with a page or market qualifier where needed. Use readable romanization for topics without an ASCII form. Check both `drafts/<slug>-brief.md` and `drafts/<slug>.md` for collisions. Update a matching artifact on an explicit revision and preserve unrelated files. Otherwise use an available numeric suffix. Keep the artifact slug in the brief and distinguish it from the publication path.
 - Save the checked brief to `drafts/<slug>-brief.md`. Read it back and check that the sections, references, and slug match the intended delivery. State material limitations in the brief and the handoff.

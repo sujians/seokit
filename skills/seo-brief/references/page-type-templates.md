@@ -1,6 +1,14 @@
 # B2B Technical and Procurement Page Templates
 
-Choose the template that fits the primary buyer decision and the observed SERP format. Use these rows to plan sections, budgets, and evidence. Adapt the depth and order to the actual product, process, market, and sample. Plan the conditions and limits behind each decision. Treat the proof examples as requests until verified.
+Choose the template that fits the primary search task. Use these rows to plan sections, depth, and supporting material. The product and capability templates suit model qualification and supplier evaluation. Apply the informational structure below when the query primarily asks how a standard, process, or selection rule works.
+
+## Informational Technical Queries
+
+For standards references, process principles, and selection explainers, devote at least 80% of the article to core technical content. Define the concept and its limits, explain relevant versions or changes, walk through the rules or calculation, and include a worked example. Cover common mistakes and use a short standalone FAQ when readers commonly confuse versions or concepts. Include that FAQ in the technical portion.
+
+Keep conversion content at or below 20% of the article, preferably 10–15%. Count the DFM handoff, procurement submission checklist, service descriptions, and inquiry CTA toward that share. Keep the handoff short and place any standalone FAQ after it, immediately before the closing CTA. For example, a component naming guide should explain the syntax, common suffix patterns, and how to decode a sample designation before asking for a BOM and drawing review. A welding explainer can give a generic defect-to-cause and inspection table using public technical practice. Use a factory record only when claiming an actual factory result or customer case.
+
+For product pages, selection comparisons, and procurement guides, make objective specifications, qualification criteria, and selection logic the main content. Condense supplier workflows and keep any commercial next step focused on the buyer's decision.
 
 ## B2B Product Page
 

@@ -2,47 +2,46 @@
 
 ## Engineering voice
 
-- Start with the decision a buyer, engineer, or quality reviewer must make. Follow with the operating condition, relevant parameter, acceptance criterion, and verification method. Prefer actions such as “check the drawing revision” and “request the inspection report for the production lot.”
+- Start with the problem the reader came to solve. When explaining a technical concept, give the definition, rule, and worked example before the manufacturing handoff. When qualifying a product or supplier, give the fit criteria, operating conditions, and verification method.
 - Distinguish a nominal value, specification limit, measured result, and design target. Keep the units, tolerance direction, grade, specimen, load, and environment needed to interpret the number. Name the method and edition where they affect acceptance. Define an uncommon abbreviation on first use.
 - Cover one decision or idea per paragraph, typically in 2–4 sentences. Review English paragraphs over 80 words and use a comparable reading length in the target language. Keep linked conditions together. After several prose paragraphs, use a table for comparable parameters, a numbered list for dependent steps, or an H3 for a distinct decision. Vary the rhythm to fit the material.
-- Use the brief's section-level terms and `terminology.glossary`. Keep model names, grades, technical symbols, and standard identifiers consistent. Preserve qualifiers that change engineering meaning. Use the brief's prose ranges as editorial budgets and cut repeated explanations before adding detail.
+- Use the brief's section-level terms and `terminology.glossary`. Keep model names, grades, technical symbols, and standard identifiers consistent. Preserve qualifiers that change engineering meaning. Use the brief's prose ranges as working estimates. Expand a section when the reader needs the rule, example, or exception to apply the answer.
 
-## Bilingual phrase blacklist
+## English phrase blacklist
 
-Scan authored headings, prose, title and description, tables, FAQs, captions, alt text, anchors, and CTAs. Include `terminology.banned_phrases[].phrase` as applicable. Match English case-insensitively with normalized spacing, apostrophes, and hyphens. Check Chinese variants in context. Preserve necessary exact document titles and attributed quotations.
+Scan authored headings, prose, title and description, tables, FAQs, captions, alt text, anchors, and CTAs. Include `terminology.banned_phrases[].phrase` as applicable. Match phrases case-insensitively with normalized spacing, apostrophes, and hyphens. Preserve necessary exact document titles and attributed quotations.
 
-The Chinese phrases and placeholder use JavaScript Unicode escapes to keep the maintained reference in English. Read the decoded strings when reviewing or writing Chinese drafts.
-
-```js
-const chinesePhrases = {
-  opening: ["\u5728\u5f53\u4eca\u5feb\u8282\u594f\u7684\u65f6\u4ee3", "\u503c\u5f97\u4e00\u63d0\u7684\u662f", "\u603b\u800c\u8a00\u4e4b"],
-  superiority: ["\u884c\u4e1a\u9886\u5148", "\u4e16\u754c\u4e00\u6d41", "\u5353\u8d8a\u54c1\u8d28", "\u98a0\u8986\u6027\u521b\u65b0"],
-  promise: ["\u8d4b\u80fd", "\u65e0\u7f1d\u5bf9\u63a5", "\u4e00\u7ad9\u5f0f\u89e3\u51b3\u65b9\u6848", "\u6ee1\u8db3\u60a8\u7684\u6240\u6709\u9700\u6c42"],
-};
-const chineseFactoryPlaceholder = "[\u5f85\u5de5\u5382\u8865\u5145: \u5177\u4f53\u7f3a\u5931\u9879]";
-```
-
-| Pattern | English blacklist | Chinese list | Rewrite |
-| --- | --- | --- | --- |
-| Generic openings and transitions | In today's fast-paced world, It is worth noting, Delve into, In conclusion | `opening` | Lead with the operating condition or buyer decision. Drop summaries that repeat it. |
-| Unsupported superiority | Industry-leading, World-class, Cutting-edge, Game-changer, Unparalleled quality | `superiority` | Give comparable, sourced results under named conditions or remove the claim. |
-| Vague promises | Unlock the potential, Seamless integration, One-stop solution, Unmatched value | `promise` | Name the interface, record, deliverable, or work the supplier can verify. |
+| Pattern | Phrases to avoid | Rewrite |
+| --- | --- | --- |
+| Generic openings and transitions | In today's fast-paced world, It is worth noting, Delve into, In conclusion | Lead with the operating condition or buyer decision. Drop summaries that repeat it. |
+| Unsupported superiority | Industry-leading, World-class, Cutting-edge, Game-changer, Unparalleled quality | Give comparable, sourced results under named conditions or remove the claim. |
+| Vague promises | Unlock the potential, Seamless integration, One-stop solution, Unmatched value | Name the interface, record, deliverable, or work the supplier can verify. |
 
 Review the structure as well as the words. Remove stock introductions, repeated H2 openers, redundant recaps, and claims padded with intensifiers. Use evidence and buyer actions to rebuild empty paragraphs. Keep parallel structure in specifications and checklists where it helps comparison.
 
 ## Claim evidence and factory placeholders
 
-| Evidence track | What to verify and record |
+| Claim type | How to write it |
 | --- | --- |
-| Public technical facts | Search for and inspect the standards publisher, regulator, national lab, original study, or applicable material-grade data sheet. Record the brief evidence ID, source URL, document and revision, clause or table, relevant conditions and limitations, and verification date where material. Confirm what the accessible source covers. Narrow or omit the claim if the necessary clause, condition, or result cannot be checked. SERP excerpts and competitor claims can lead to sources. |
-| First-party factory claims | Verify against `profile/profile.yaml` or user-provided material. Record the evidence ID, field or document reference, model and plant, lot or sample, test method, timing, and disclosure status as applicable. Public factory copy requires approved evidence or an approved redacted reference. Keep private evidence in the working review. |
+| Established industry knowledge | Explain public methods such as naming syntax, common density-grade suffix mappings, formula concepts, zero-degree rotation conventions, and familiar weld-defect causes where relevant. Give original worked examples with clear assumptions. A paywalled standard can still have public explanations of its underlying concepts. Use a short edition and product data sheet note when rules vary. Avoid copying complete protected standards tables. |
+| Specific public technical facts | Check edition-specific requirements, exact numerical limits, material properties, formal test conditions, and regulatory obligations through the standards publisher, regulator, national lab, original study, or applicable data sheet. Attribute the facts near their use and follow the link rules below. If the exact requirement is unavailable, keep the useful public explanation and flag the specific value or clause to verify. |
+| Factory-specific claims | Verify yield, tolerance capability, capacity, lead times, MOQ, certificate numbers and scope, and real customer cases against `profile/profile.yaml` or user-provided material. Preserve the covered model, plant, sample, date, method, and disclosure limits where they affect interpretation. Keep private records in the working notes. |
 
-- Tie every substantive claim to evidence, including retained copy, table cells, metadata, captions, and CTA promises. Preserve source scope and degree of certainty. Verify conversions, denominators, time frames, and whether results are comparable. For factory examples, require a real record, methodology or conditions, and permission. Credit reviewers only when identity, role, and approval are confirmed.
-- Never invent or extrapolate capacity, tolerances, certification numbers or scope, lead times, MOQ, or customer cases. An industry value cannot establish a factory capability. Evidence from a single lot supports that lot within its tested conditions.
-- Mark missing, conflicting, or unusable factory proof at the affected passage, table cell, or editorial evidence slot. For English use `[Factory evidence needed: specific material and scope]`. For Chinese use the decoded `chineseFactoryPlaceholder`. Replace the template text with the exact document or test, product and conditions, for example `[Factory evidence needed: Model A cutout drawing revision and critical hole tolerances]`. Remove any speculative value. Carry the brief's evidence ID and next verification action in the review.
-- A placeholder identifies missing evidence. The [pre-save checklist](geo-citation-and-qa.md) decides whether the buyer's central decision can stand with the claim removed or narrowed. Escalate unresolved core measurements as blockers.
+- Use a generic defect comparison, inspection checklist, or worked calculation when it answers the reader's question. Label example assumptions and figures as illustrative. Require a real, publishable record for an actual factory result or customer case. Verify units and conversions and keep source conditions with the values they qualify.
+- Use `[Factory evidence needed: specific material and scope]` where factory proof is missing. Localize the short marker to the draft language when needed. Replace speculative data with the specific request, such as `[Factory evidence needed: Model A cutout drawing and hole tolerances]`. Keep writing around optional measurements and customer records. See the [draft save conditions](geo-citation-and-qa.md#draft-save-and-publication-dependencies) for unresolved issues that affect the whole draft.
 
-## Procurement CTA
+## Link and source formatting rules
+
+- Never append a standalone Markdown source link or a string of source links after the closing punctuation of a paragraph or list item. This also applies to a link on its own line directly beneath the prose.
+- Use descriptive anchor text as part of the sentence whenever you link to a standard, data sheet, application note, or related site page in the body. For example, write `Check [the publisher's revision table](https://example.com/standards/revisions) before specifying an edition.` or `See [our assembly acceptance guide](/guides/assembly-acceptance) for inspection examples.`
+- Keep only links that help the reader verify a claim or take the next step. Use at most two links per subsection across internal and external links combined. Name the relevant source and edition in plain text where readers need that context.
+- Collect the remaining verified, relevant references in a final `## Sources` section after the closing CTA, when present. List each source once with a descriptive title and its link. Localize the heading to the draft language. For Chinese drafts, decode the JSON string `"## \u53c2\u8003\u8d44\u6599"` for the heading.
+
+## Content balance and procurement CTA
+
+On informational pages such as standards references, process principles, and selection explainers, devote at least 80% to core technical content. Keep conversion content at or below 20%, preferably 10–15%, including DFM handoff, procurement submission checklists, service descriptions, and inquiry CTAs. Count technical FAQ answers toward technical content and place the standalone FAQ after the technical sections and concise handoff, immediately before the closing CTA when present.
+
+In procurement guides, product pages, and selection comparisons, give most of the space to objective specifications, qualification criteria, and selection logic. Keep supplier workflows and service descriptions concise and relevant to the reader's next decision.
 
 Choose one primary action for the decision stage, at the placement specified in the brief. Use a verified contact or download path. State the inputs needed and what the buyer can reasonably request.
 

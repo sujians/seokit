@@ -64,10 +64,10 @@ try {
   assert.deepEqual(errors, []);
   const tools = extensions.flatMap((extension) => [...extension.tools.values()]);
   const ctx = { cwd, hasUI: false };
-  const invoke = async (name, args, context = ctx) => {
+  const invoke = async (name, args, context = ctx, signal) => {
     const tool = tools.find(({ definition }) => definition.name === name)?.definition;
     assert.ok(tool, `${name} was not registered`);
-    const result = await tool.execute(`smoke-${name}`, args, undefined, undefined, context);
+    const result = await tool.execute(`smoke-${name}`, args, signal, undefined, context);
     assert.ok(!result.isError, `${name} returned an error`);
     return result;
   };
@@ -92,7 +92,7 @@ try {
   }
   assert.ok(prompts.find(({ name }) => name === "seokit-cluster").content.includes("clusters/<keyword-slug>-clusters.md"));
   const articlePrompt = prompts.find(({ name }) => name === "seokit-article").content;
-  for (const instruction of ["drafts/<slug>-brief.md", "seo-write", "seokit_score_geo", "factory measurement evidence"]) {
+  for (const instruction of ["drafts/<slug>-brief.md", "seo-write", "seokit_score_geo", "factory placeholders for optional missing records"]) {
     assert.ok(articlePrompt.includes(instruction), `seokit-article should carry ${instruction} into the draft handoff`);
   }
   console.log(`PASS README, ${skills.length} skills, ${prompts.length} prompts, content references and workspace paths`);
@@ -150,12 +150,12 @@ try {
   assert.equal(localizedGeo.signals.attributions, 1);
   console.log("PASS project profile, topic plans, audits, briefs, drafts, translations and multilingual CSV and GEO inputs");
 
-  const answer = "Enclosure fit requires checking the mounting pattern and usable interior depth against the approved drawing. Compare the mounting hole locations and the space reserved for cable bends, with connectors in place. According to the approved drawing, use its revision for both checks and request a fit review if either condition is unclear.";
-  const answerWords = [...new Intl.Segmenter("en", { granularity: "word" }).segment(answer)]
+  const faqAnswer = "Enclosure fit requires checking the mounting pattern and usable interior depth against the approved drawing. Compare the mounting hole locations and the space reserved for cable bends, with connectors in place. According to the approved drawing, use its revision for both checks and request a fit review if either condition is unclear.";
+  const faqWords = [...new Intl.Segmenter("en", { granularity: "word" }).segment(faqAnswer)]
     .filter(({ isWordLike }) => isWordLike).length;
-  assert.ok(answerWords >= 40 && answerWords <= 60);
+  assert.ok(faqWords >= 40 && faqWords <= 60);
   const draftGeo = await run("seokit_score_geo", { html: `<main>
-    <h1>Enclosure fit checks</h1><h2>Mounting pattern and depth</h2><p>${answer}</p>
+    <h1>Enclosure fit checks</h1><h2>FAQ</h2><h3>How do I check if the enclosure fits?</h3><p>${faqAnswer}</p>
     <table><thead><tr><th>Check</th><th>Acceptance basis</th></tr></thead>
     <tbody><tr><td>Mounting hole locations</td><td>Approved drawing revision</td></tr></tbody></table>
   </main>` });
@@ -163,7 +163,7 @@ try {
   assert.equal(draftGeo.signals.tableDataRows, 1);
   assert.equal(draftGeo.signals.directAnswerBlocks, 1);
   assert.equal(draftGeo.signals.attributions, 1);
-  console.log("PASS brief-to-writer checklist, Chinese editorial strings and GEO draft signals");
+  console.log("PASS brief-to-writer handoff, optional factory evidence and GEO FAQ signals");
 
   const howTo = JSON.stringify({ "@context": "https://schema.org", "@type": "HowTo" });
   const validate = (blocks, options) => run("seokit_validate_schema", { blocks, ...options });
@@ -204,25 +204,44 @@ try {
 }
 
 async function checkWriterHandoff() {
-  const [brief, qa, guidance] = await Promise.all([
-    readFile(repoPath("skills/seo-brief/references/brief-output-template.md"), "utf8"),
-    readFile(repoPath("skills/seo-write/references/geo-citation-and-qa.md"), "utf8"),
-    readFile(repoPath("skills/seo-write/references/b2b-writing-and-anti-slop.md"), "utf8"),
-  ]);
-  const briefSections = Array.from(brief.matchAll(/^### (\d+\. .+)$/gm), ([, section]) => section);
-  const reviewedSections = Array.from(qa.matchAll(/^\| (\d+\. .+?) \|/gm), ([, section]) => section);
-  assert.ok(briefSections.length > 0);
-  assert.deepEqual(reviewedSections, briefSections, "Writer QA should check every numbered brief section in order");
-  const localizedSource = guidance.match(/```js\n([\s\S]*?)\n```/u)?.[1];
-  assert.ok(localizedSource, "Writer guidance should contain the Chinese editorial strings");
-  const { chinesePhrases, chineseFactoryPlaceholder } = runInNewContext(
-    `${localizedSource}\n;({ chinesePhrases, chineseFactoryPlaceholder })`, {}, { timeout: 1000 },
+  const paths = [
+    "seo-brief/SKILL.md",
+    "seo-brief/references/page-type-templates.md",
+    "seo-brief/references/brief-output-template.md",
+    "seo-write/SKILL.md",
+    "seo-write/references/geo-citation-and-qa.md",
+    "seo-write/references/b2b-writing-and-anti-slop.md",
+    "seo-brief/references/serp-gap-and-research.md",
+  ];
+  const [briefSkill, pageTemplates, brief, writerSkill, qa, guidance, research] = await Promise.all(
+    paths.map((path) => readFile(repoPath(`skills/${path}`), "utf8")),
   );
-  assert.equal(chineseFactoryPlaceholder, "[\u5f85\u5de5\u5382\u8865\u5145: \u5177\u4f53\u7f3a\u5931\u9879]");
-  for (const group of ["opening", "superiority", "promise"]) {
-    assert.ok(chinesePhrases[group].length >= 3);
-    assert.ok(chinesePhrases[group].every((phrase) => /^\p{Script=Han}+$/u.test(phrase)));
+  const factoryPlaceholder = "[Factory evidence needed: specific material and scope]";
+  assert.ok(brief.includes(factoryPlaceholder), "Brief should define the factory evidence placeholder");
+  assert.ok(guidance.includes(factoryPlaceholder), "Writer should use the brief's factory evidence placeholder");
+  assert.match(brief, /standalone FAQ.*40–60-word answers/s);
+  assert.match(qa, /standalone FAQ.*40–60 words/);
+  assert.match(qa, /Save a complete working draft when optional factory measurements/);
+  assert.match(guidance, /^## Link and source formatting rules$/m);
+  assert.match(guidance, /Never append .*source link.*after the closing punctuation of a paragraph or list item/);
+  assert.match(guidance, /Use descriptive anchor text as part of the sentence/);
+  assert.match(guidance, /at most two links per subsection across internal and external links combined/);
+  assert.match(guidance, /remaining verified, relevant references in a final `## Sources` section after the closing CTA/);
+  const localizedHeading = guidance.match(/For Chinese drafts, decode the JSON string `("## [^"]+")`/)?.[1];
+  assert.ok(localizedHeading, "Writer should specify an escaped Sources heading for Chinese drafts");
+  assert.equal(JSON.parse(localizedHeading), "## \u53c2\u8003\u8d44\u6599");
+  assert.match(qa, /Before saving, check paragraphs and list items for standalone Markdown source links after closing punctuation/);
+  assert.match(qa, /During automatic revision, move those links into the sentence using descriptive anchor text or into the final `## Sources` section/);
+  assert.match(writerSkill, /when direct answers, useful tables, attribution, or link formatting need work/);
+  for (const instructions of [briefSkill, pageTemplates, brief, writerSkill, qa, guidance]) {
+    assert.match(instructions, /at least 80%/);
+    assert.match(instructions, /(?:at or below|at most) 20%/);
+    assert.match(instructions, /10–15%/);
+    assert.doesNotMatch(instructions, /70–80%|20–30%/);
   }
+  assert.match(brief, /standalone FAQ after the technical sections and the concise DFM or procurement handoff, immediately before the closing CTA/);
+  assert.match(research, /continue with later SERP queries after a timeout or fallback/);
+  assert.match(research, /seokit_dataforseo_keywords.*separate lookup even if a SERP query times out or falls back/);
 }
 
 async function checkWorkspacePaths(directory = repoPath(".")) {
@@ -257,8 +276,8 @@ async function checkDataForSeo(invoke, writeFile) {
   const secrets = [fileLogin, filePassword, envLogin, envPassword];
   const market = { location: 2840, language_code: "en" };
   const args = { queries: [{ ...market, keywords: ["enclosures"] }] };
-  const runProvider = async (name, params, context) => {
-    const result = await invoke(`seokit_dataforseo_${name}`, params, context);
+  const runProvider = async (name, params, context, signal) => {
+    const result = await invoke(`seokit_dataforseo_${name}`, params, context, signal);
     assert.ok(secrets.every((secret) => !JSON.stringify(result).includes(secret)), "Provider exposed credentials");
     return result.structuredContent;
   };
@@ -282,7 +301,7 @@ async function checkDataForSeo(invoke, writeFile) {
     await writeFile("profile/.env", `\uFEFF# Fixture\r\nexport ${loginKey} = ${fileLogin} # comment\r\n${passwordKey} = '${filePassword}'\r\n`);
     for (const [name, params, cost] of [
       ["keywords", args, 0.09],
-      ["serp", { ...market, keywords: ["enclosures"] }, 0.002],
+      ["serp", { ...market, keywords: ["enclosures"] }, 0.004],
       ["backlinks", { domains: ["example.com"] }, 0.024036],
     ]) {
       const result = await runProvider(name, { ...params, dry_run: true });
@@ -304,6 +323,7 @@ async function checkDataForSeo(invoke, writeFile) {
     await checkGoogleGotoSession(mock, runProvider, market);
     await checkGoogleGoto(mock, runProvider, market);
     await checkGoogleGotoRedirects(mock, runProvider, market);
+    await checkSerpTimeoutFallback(mock, runProvider, market);
     await checkDataForSeoModes(mock, runProvider, writeFile, market);
     process.env[loginKey] = "";
     assert.deepEqual((await runProvider("keywords", args)).missingEnv, [loginKey]);
@@ -376,7 +396,7 @@ async function checkDataForSeoModes(mock, runProvider, writeFile, market) {
   assert.deepEqual(history().map(({ fullUrl }) => fullUrl), Array(queries.length).fill(sandboxOrigin + path));
   mock.clearCallHistory();
 
-  const serpPath = "/v3/serp/google/organic/live/regular";
+  const serpPath = "/v3/serp/google/organic/live/advanced";
   const items = [{ type: "organic", rank_group: 1, url: "https://www.google.com/goto?url=sample" }];
   sandbox.intercept({ path: serpPath, method: "POST" }).reply(200, {
     status_code: 20000, cost: 0, tasks: [{ status_code: 20000, result: [{ items }] }],
@@ -398,6 +418,106 @@ async function checkDataForSeoModes(mock, runProvider, writeFile, market) {
   mock.disableCallHistory();
 }
 
+async function checkSerpTimeoutFallback(mock, runProvider, market) {
+  mock.enableCallHistory();
+  mock.clearCallHistory();
+  const api = mock.get("https://api.dataforseo.com");
+  const google = mock.get("https://www.google.com");
+  const post = (keyword, resolve_goto_urls) => api.intercept({
+    path: "/v3/serp/google/organic/live/advanced",
+    method: "POST",
+    body: JSON.stringify([{
+      location_code: market.location, language_code: market.language_code,
+      keyword, depth: 10, device: "desktop", resolve_goto_urls,
+    }]),
+  });
+  const success = (items = []) => ({
+    status_code: 20000, cost: 0.002, tasks: [{ status_code: 20000, result: [{ items }] }],
+  });
+  const resolvedPath = "/goto?url=timeout-recovery";
+  const unresolvedPath = "/goto?url=unavailable";
+  post("enclosures", true).reply(200, success()).delay(250);
+  post("enclosures", false).reply(200, success([
+    { type: "organic", rank_group: 2, rank_absolute: 5, url: unresolvedPath, breadcrumb: "https://www.parts.example › Parts", title: "Parts catalog", description: "Part dimensions" },
+    { type: "people_also_ask", items: [{ type: "people_also_ask_element", title: "How do I size an enclosure?" }] },
+    { type: "organic", rank_group: 1, rank_absolute: 3, url: resolvedPath, title: "Enclosure sizing", description: "Sizing and clearances" },
+  ]));
+  google.intercept({ path: resolvedPath, method: "GET" }).reply(302, "", {
+    headers: { location: "https://www.example.com/enclosures?srsltid=tracking&size=12" },
+  });
+  google.intercept({ path: unresolvedPath, method: "GET" }).reply(403, "Forbidden");
+  post("unavailable query", true).reply(502, {});
+  post("unavailable query", false).reply(504, {});
+  post("gateway query", true).reply(504, {});
+  post("gateway query", false).reply(200, success());
+  post("later query", true).reply(200, success());
+
+  // Use a real abort signal with a shortened deadline for the deliberately slow response.
+  const timeout = AbortSignal.timeout;
+  const budgets = [];
+  AbortSignal.timeout = (ms) => {
+    budgets.push(ms);
+    return timeout(ms === 35_000 ? 100 : ms);
+  };
+  let result;
+  try {
+    result = await runProvider("serp", {
+      ...market, keywords: ["enclosures", "unavailable query", "gateway query", "later query"],
+    });
+  } finally {
+    AbortSignal.timeout = timeout;
+  }
+  assert.deepEqual(budgets, [35_000, 30_000, 10_000, 10_000, 35_000, 30_000, 35_000, 30_000, 35_000]);
+  assert.equal(result.status, "partial");
+  assert.equal(result.requestsAttempted, 7);
+  assert.equal(result.unattemptedTasks, 0);
+  assert.equal(result.estimate.totalUsd, 0.016);
+  assert.equal(result.reportedCostUsd, 0.006);
+  assert.equal(result.requestsWithoutReportedCost, 4);
+  assert.deepEqual(result.failures, [{ task: 2, message: "DataForSEO returned HTTP 504." }]);
+  assert.deepEqual(result.results.map(({ keyword, goto_resolution_mode }) => [keyword, goto_resolution_mode]), [
+    ["enclosures", "local_fallback_after_timeout"],
+    ["gateway query", "local_fallback_after_timeout"],
+    ["later query", "server"],
+  ]);
+  const [recovered] = result.results;
+  assert.deepEqual(recovered.peopleAlsoAsk, ["How do I size an enclosure?"]);
+  assert.deepEqual(recovered.organic[0], {
+    rank: 1, absoluteRank: 3, title: "Enclosure sizing", description: "Sizing and clearances",
+    url: "https://www.example.com/enclosures?size=12", domain: "example.com",
+  });
+  assert.equal(recovered.organic[1].rank, 2);
+  assert.equal(recovered.organic[1].description, "Part dimensions");
+  assert.equal(recovered.organic[1].domain, "parts.example");
+  assert.equal(recovered.organic[1].unresolved_goto, true);
+  assert.equal(recovered.organic[1].goto_resolve_error, "http_403");
+  assert.deepEqual(mock.getCallHistory().calls().map(({ method }) => method), [
+    "POST", "POST", "GET", "GET", "POST", "POST", "POST", "POST", "POST",
+  ]);
+
+  post("local only", false).reply(504, {});
+  const localFailure = await runProvider("serp", { ...market, keywords: ["local only"], resolve_goto_urls: false });
+  assert.equal(localFailure.status, "request_failed");
+  assert.equal(localFailure.requestsAttempted, 1);
+  post("authorization", true).reply(401, {});
+  const unauthorized = await runProvider("serp", { ...market, keywords: ["authorization"] });
+  assert.equal(unauthorized.requestsAttempted, 1);
+  assert.equal(unauthorized.status, "request_failed");
+
+  const controller = new AbortController();
+  post("cancelled query", true).reply(() => {
+    setImmediate(() => controller.abort());
+    return { statusCode: 200, data: success() };
+  }).delay(250);
+  const cancelled = await runProvider("serp", { ...market, keywords: ["cancelled query", "unattempted"] }, undefined, controller.signal);
+  assert.equal(cancelled.status, "cancelled");
+  assert.equal(cancelled.requestsAttempted, 1);
+  assert.equal(cancelled.unattemptedTasks, 1);
+  mock.assertNoPendingInterceptors();
+  mock.disableCallHistory();
+  console.log("PASS SERP timeout and gateway fallback, local URL resolution, PAA, and partial batches");
+}
+
 async function checkGoogleGotoSession(mock, runProvider, market) {
   mock.enableCallHistory();
   const apex = "https://google.com";
@@ -412,7 +532,7 @@ async function checkGoogleGotoSession(mock, runProvider, market) {
   ];
   const headers = { "user-agent": "Mozilla/5.0", connection: "close" };
   mock.get("https://api.dataforseo.com")
-    .intercept({ path: "/v3/serp/google/organic/live/regular", method: "POST" })
+    .intercept({ path: "/v3/serp/google/organic/live/advanced", method: "POST" })
     .reply(200, { status_code: 20000, cost: 0.002, tasks: [{ status_code: 20000, result: [{ items }] }] });
   const google = mock.get(www);
   const requestTimes = [];
@@ -473,7 +593,7 @@ async function checkGoogleGoto(mock, runProvider, market) {
   ];
   mock.enableCallHistory();
   mock.get("https://api.dataforseo.com")
-    .intercept({ path: "/v3/serp/google/organic/live/regular", method: "POST" })
+    .intercept({ path: "/v3/serp/google/organic/live/advanced", method: "POST" })
     .reply(200, { status_code: 20000, cost: 0.002, tasks: [{ status_code: 20000, result: [{ items }] }] });
   const search = mock.get(google);
   search.intercept({ path: redirect, method: "GET", headers: { "user-agent": "Mozilla/5.0" } })
@@ -539,7 +659,7 @@ async function checkGoogleGotoRedirects(mock, runProvider, market) {
     { type: "organic", rank_group: paths.length + 1, url: "https://provider.example/", domain: "provider.example" },
   ];
   mock.get("https://api.dataforseo.com")
-    .intercept({ path: "/v3/serp/google/organic/live/regular", method: "POST", body: JSON.stringify(payload) })
+    .intercept({ path: "/v3/serp/google/organic/live/advanced", method: "POST", body: JSON.stringify(payload) })
     .reply(200, { status_code: 20000, cost: 0.002, tasks: [{ status_code: 20000, result: [{ items }] }] });
   const args = { ...market, keywords: ["enclosures"], resolve_goto_urls: false };
   const dryRun = await runProvider("serp", { ...args, dry_run: true });
@@ -549,7 +669,9 @@ async function checkGoogleGotoRedirects(mock, runProvider, market) {
   const result = await runProvider("serp", args);
   assert.equal(result.status, "ok");
   mock.assertNoPendingInterceptors();
-  const rows = result.results[0].organic;
+  const [local] = result.results;
+  assert.equal(local.goto_resolution_mode, "local");
+  const rows = local.organic;
   assert.deepEqual(rows.map(({ url, goto_resolve_error }) => [url, goto_resolve_error]), [
     ["https://www.example.com/chain#end", undefined],
     ["https://www.example.com/refresh?x=1", undefined],

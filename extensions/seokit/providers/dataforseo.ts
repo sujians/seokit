@@ -17,9 +17,11 @@ const confirmationThreshold = 500_000;
 const credentialNames = ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"] as const;
 const settingNames = [...credentialNames, "DATAFORSEO_SANDBOX"] as const;
 const fallback = ["Use public web search and seokit_fetch_page for competitor research.", "Import supplied keyword metrics from CSV with seokit_read_keyword_csv."];
+const serpEndpoint = "serp/google/organic/live/advanced";
+const localSerpTimeoutMs = 30_000;
 const pricing = {
   "keywords_data/google_ads/search_volume/live": "https://dataforseo.com/pricing/keywords-data/google-ads",
-  "serp/google/organic/live/regular": "https://dataforseo.com/pricing/google-serp/google-organic-serp-api",
+  [serpEndpoint]: "https://dataforseo.com/pricing/google-serp/google-organic-serp-api",
   "backlinks/summary/live": "https://dataforseo.com/pricing/backlinks/backlinks",
 };
 type Endpoint = keyof typeof pricing;
@@ -30,7 +32,8 @@ type Task = {
   costMicros: number;
   units: string;
   timeoutMs?: number;
-  project: (rows: ApiObject[], dispatcher?: Dispatcher, signal?: AbortSignal) => JsonValue | Promise<JsonValue>;
+  retryWithoutGoto?: boolean;
+  project: (rows: ApiObject[], dispatcher?: Dispatcher, signal?: AbortSignal, usedFallback?: boolean) => JsonValue | Promise<JsonValue>;
 };
 
 const dryRunOption = Type.Optional(Type.Boolean({ description: "Estimate offline and report credential availability without making any API request." }));
@@ -92,7 +95,10 @@ async function postTask(apiOrigin: string, endpoint: Endpoint, task: Task, autho
     });
     if (!response.ok) {
       await response.body?.cancel().catch(() => {});
-      return { costUsd, error: `DataForSEO returned HTTP ${response.status}.` };
+      return {
+        costUsd, error: `DataForSEO returned HTTP ${response.status}.`,
+        retryable: response.status === 502 || response.status === 504,
+      };
     }
     const body = record(await response.json());
     costUsd = number(body.cost);
@@ -106,11 +112,16 @@ async function postTask(apiOrigin: string, endpoint: Endpoint, task: Task, autho
     if (result.status_code !== 20000) {
       return { costUsd, error: `DataForSEO task failed (status ${number(result.status_code) ?? "unknown"}).` };
     }
-    return { costUsd, data: await task.project(rows(result.result), dispatcher, signal) };
-  } catch {
-    const error = signal?.aborted ? "DataForSEO request cancelled." : timeout.aborted
-      ? "DataForSEO request timed out." : "DataForSEO request or response processing failed.";
-    return { costUsd, error };
+    return { costUsd, items: rows(result.result) };
+  } catch (cause) {
+    if (signal?.aborted) return { costUsd, error: "DataForSEO request cancelled." };
+    // Undici can wrap a dispatcher error in a fetch TypeError.
+    const errorName = cause instanceof Error ? (cause.cause instanceof Error ? cause.cause.name : cause.name) : null;
+    const timedOut = timeout.aborted || errorName === "AbortError" || errorName === "TimeoutError";
+    return {
+      costUsd, retryable: timedOut,
+      error: timedOut ? "DataForSEO request timed out." : "DataForSEO request or response processing failed.",
+    };
   }
 }
 
@@ -146,7 +157,9 @@ async function runBatch(endpoint: Endpoint, dryRun: boolean, buildTasks: (sandbo
     return analysisResult({ ...base, status: "invalid_input", message: (error as Error).message, missingEnv, configuration, fallback });
   }
 
-  const totalMicros = sandbox ? 0 : tasks.reduce((sum, task) => sum + task.costMicros, 0);
+  const requestCount = (task: Task) => task.retryWithoutGoto ? 2 : 1;
+  const totalMicros = sandbox ? 0 : tasks.reduce((sum, task) => sum + task.costMicros * requestCount(task), 0);
+  const maxRequests = tasks.reduce((sum, task) => sum + requestCount(task), 0);
   const requiresConfirmation = totalMicros > confirmationThreshold;
   const estimate = {
     currency: "USD",
@@ -154,10 +167,10 @@ async function runBatch(endpoint: Endpoint, dryRun: boolean, buildTasks: (sandbo
     thresholdUsd: confirmationThreshold / usdMicros,
     requiresConfirmation,
     pricingSource: sandbox ? "https://docs.dataforseo.com/v3/appendix-sandbox/" : pricing[endpoint],
-    tasks: tasks.map(({ description, units, costMicros }) => ({
-      description,
-      units: sandbox ? "Sandbox request" : units,
-      estimatedUsd: sandbox ? 0 : costMicros / usdMicros,
+    tasks: tasks.map((task) => ({
+      description: task.description,
+      units: sandbox ? "Sandbox request" : task.units,
+      estimatedUsd: sandbox ? 0 : (task.costMicros * requestCount(task)) / usdMicros,
     })),
   };
   const batch = { ...base, estimate };
@@ -169,7 +182,8 @@ async function runBatch(endpoint: Endpoint, dryRun: boolean, buildTasks: (sandbo
       return analysisResult({ ...batch, status: "confirmation_required", message: "Run in a Pi session with interactive confirmation to approve this batch.", fallback });
     }
     const lines = estimate.tasks.map((task) => `${task.description} (${task.units}): $${task.estimatedUsd}`);
-    const message = [`Estimated $${estimate.totalUsd} USD for ${tasks.length} API requests.`, ...lines].join("\n");
+    const requestLabel = maxRequests === tasks.length ? `${maxRequests}` : `up to ${maxRequests}`;
+    const message = [`Estimated $${estimate.totalUsd} USD for ${requestLabel} API requests.`, ...lines].join("\n");
     const approved = await ctx.ui.confirm("Approve DataForSEO batch?", message, { signal }).catch(() => false);
     if (!approved || signal?.aborted) return analysisResult({ ...batch, status: signal?.aborted ? "cancelled" : "declined", fallback });
   }
@@ -179,33 +193,55 @@ async function runBatch(endpoint: Endpoint, dryRun: boolean, buildTasks: (sandbo
   const results: JsonValue[] = [];
   let reportedMicros = 0;
   let unreportedCosts = 0;
-  let failure: { task: number; message: string } | null = null;
+  const failures: { task: number; message: string }[] = [];
+  let tasksAttempted = 0;
   let requestsAttempted = 0;
   let dispatcher: EnvHttpProxyAgent | undefined;
+  async function send(task: Task) {
+    requestsAttempted++;
+    const result = await postTask(apiOrigin, endpoint, task, authorization, dispatcher, signal);
+    if (result.costUsd === null) unreportedCosts++;
+    else reportedMicros += Math.round(result.costUsd * usdMicros);
+    return result;
+  }
+
   try {
     if (proxy) dispatcher = new EnvHttpProxyAgent();
     for (const task of tasks) {
       if (signal?.aborted) break;
-      requestsAttempted++;
-      const result = await postTask(apiOrigin, endpoint, task, authorization, dispatcher, signal);
-      if (result.costUsd === null) unreportedCosts++;
-      else reportedMicros += Math.round(result.costUsd * usdMicros);
-      if (result.error !== undefined) {
-        failure = { task: requestsAttempted, message: result.error };
-        break;
+      tasksAttempted++;
+      let result = await send(task);
+      const usedFallback = Boolean(task.retryWithoutGoto && result.retryable && !signal?.aborted);
+      if (usedFallback) {
+        result = await send({
+          ...task,
+          payload: { ...task.payload, resolve_goto_urls: false },
+          timeoutMs: localSerpTimeoutMs,
+        });
       }
-      results.push(result.data);
+      if (result.error !== undefined) {
+        failures.push({ task: tasksAttempted, message: result.error });
+      } else {
+        try {
+          results.push(await task.project(result.items, dispatcher, signal, usedFallback));
+          continue;
+        } catch {
+          failures.push({ task: tasksAttempted, message: "DataForSEO response processing failed." });
+        }
+      }
+      if (endpoint !== serpEndpoint) break;
     }
   } catch {
-    failure = { task: requestsAttempted + 1, message: "Could not initialize the DataForSEO connection." };
+    failures.push({ task: tasksAttempted + 1, message: "Could not initialize the DataForSEO connection." });
   } finally {
     await dispatcher?.destroy().catch(() => {});
   }
 
   const status = results.length === tasks.length ? "ok" : signal?.aborted ? "cancelled" : results.length ? "partial" : "request_failed";
   return analysisResult({
-    ...batch, status, results, failure, requestsAttempted,
-    unattemptedTasks: tasks.length - requestsAttempted,
+    ...batch, status, results, failure: failures[0] ?? null, requestsAttempted,
+    ...(endpoint === serpEndpoint ? { failures } : {}),
+    unattemptedTasks: tasks.length - tasksAttempted,
     reportedCostUsd: reportedMicros / usdMicros,
     requestsWithoutReportedCost: unreportedCosts,
     ...(status === "ok" ? {} : { fallback }),
@@ -448,12 +484,17 @@ async function organicResults(items: ApiObject[], topN: number, cache: Map<strin
   for (const { goto } of top) {
     if (sandbox || signal?.aborted) break;
     if (goto && !cache.has(goto.requestUrl)) {
-      cache.set(goto.requestUrl, await queueGotoResolution(goto, dispatcher, signal));
+      const resolved = await queueGotoResolution(goto, dispatcher, signal)
+        .catch((error: unknown) => ({ error: signal?.aborted ? "cancelled" : gotoRequestError(error) }));
+      cache.set(goto.requestUrl, resolved);
     }
   }
 
   return top.map<JsonValue>(({ item, url, rank, goto }) => {
-    const entry = { rank, absoluteRank: number(item.rank_absolute), url, title: string(item.title), domain: string(item.domain) };
+    const entry = {
+      rank, absoluteRank: number(item.rank_absolute), url, title: string(item.title),
+      description: string(item.description), domain: string(item.domain),
+    };
     if (!goto) {
       const landing = URL.parse(url);
       return landing && /^https?:$/.test(landing.protocol) ? { ...entry, ...cleanLandingUrl(landing) } : entry;
@@ -469,10 +510,22 @@ async function organicResults(items: ApiObject[], topN: number, cache: Map<strin
   });
 }
 
+function peopleAlsoAsk(items: ApiObject[]) {
+  const questions = new Set<string>();
+  for (const item of items) {
+    if (item.type !== "people_also_ask" || !Array.isArray(item.items)) continue;
+    for (const question of item.items) {
+      const title = typeof question?.title === "string" ? question.title.trim() : "";
+      if (question?.type === "people_also_ask_element" && title) questions.add(title);
+    }
+  }
+  return [...questions];
+}
+
 export const dataForSeoSerpTool = defineTool({
   name: "seokit_dataforseo_serp",
   label: "DataForSEO Google organic rankings",
-  description: "Fetch up to top_n organic Google results per keyword for a country, language and device. Output may contain fewer organic results when the provider returns less. DataForSEO resolves Google goto links by default, with local resolution for remaining goto links. Use dry_run to estimate spending before calling the live endpoint.",
+  description: "Fetch up to top_n organic Google results and any observed People Also Ask questions per keyword, scoped by country, language, and device. Server-side goto resolution is the default. A timeout or HTTP 502/504 triggers one retry with local goto resolution. Use dry_run to estimate the cost including any retry.",
   parameters: Type.Object({
     ...marketFields,
     keywords: Type.Array(Type.String({ minLength: 1, maxLength: 700 }), { minItems: 1, maxItems: 25 }),
@@ -484,7 +537,7 @@ export const dataForSeoSerpTool = defineTool({
   outputSchema: objectOutput,
   async execute(_id, { location, language_code, keywords, top_n = 10, device = "desktop", resolve_goto_urls = true, dry_run }, signal, _onUpdate, ctx) {
     const gotoCache = new Map<string, GotoResolution>();
-    return runBatch("serp/google/organic/live/regular", dry_run ?? false, (sandbox) => {
+    return runBatch(serpEndpoint, dry_run ?? false, (sandbox) => {
       const scope = market(location, language_code);
       const pages = Math.ceil(top_n / 10);
       return [...new Set(keywords.map((keyword) => cleanText(keyword, "Keyword")))].map((keyword) => {
@@ -492,15 +545,21 @@ export const dataForSeoSerpTool = defineTool({
         // Use the full live rate for every page and the published per-operator multiplier.
         return {
           payload: { ...scope, keyword: literalKeyword(keyword), depth: pages * 10, device, resolve_goto_urls },
-          timeoutMs: 90_000,
+          timeoutMs: resolve_goto_urls ? 35_000 : localSerpTimeoutMs,
+          retryWithoutGoto: resolve_goto_urls,
           description: `${keyword} (${String(location).trim()} / ${language_code} / ${device})`,
-          units: `${pages} page(s) × $0.002${operatorCount ? ` × 5^${operatorCount} for search operators` : ""}`,
+          units: `${pages} page(s) × $0.002${operatorCount ? ` × 5^${operatorCount} for search operators` : ""}${resolve_goto_urls ? " per request, up to 2 requests" : ""}`,
           costMicros: pages * 2_000 * 5 ** operatorCount,
-          project: async ([result], dispatcher, signal) => ({
-            ...scope, keyword, device, requestedTopN: top_n,
-            observedAt: string(result?.datetime), searchUrl: string(result?.check_url),
-            organic: await organicResults(rows(result ? result.items : null), top_n, gotoCache, sandbox, dispatcher, signal),
-          }),
+          project: async ([result], dispatcher, signal, usedFallback) => {
+            const items = rows(result ? result.items : null);
+            return {
+              ...scope, keyword, device, requestedTopN: top_n,
+              observedAt: string(result?.datetime), searchUrl: string(result?.check_url),
+              goto_resolution_mode: usedFallback ? "local_fallback_after_timeout" : resolve_goto_urls ? "server" : "local",
+              peopleAlsoAsk: peopleAlsoAsk(items),
+              organic: await organicResults(items, top_n, gotoCache, sandbox, dispatcher, signal),
+            };
+          },
         };
       });
     }, ctx, signal);

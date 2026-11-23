@@ -48,7 +48,7 @@ Workflows create these paths as needed, relative to the directory where Pi start
 
 ## DataForSEO configuration and cost
 
-The optional provider supplies country- and language-specific Google Ads volume and CPC, Google organic rankings, and domain backlink summaries. Use your API login and password in `profile/.env` or in Pi's process environment. Process settings take precedence per variable.
+The optional provider supplies country- and language-specific Google Ads volume and CPC, Google organic rankings and observed People Also Ask questions, and domain backlink summaries. Use your API login and password in `profile/.env` or in Pi's process environment. Process settings take precedence per variable.
 
 ```dotenv
 DATAFORSEO_LOGIN=your_api_login
@@ -58,6 +58,7 @@ DATAFORSEO_SANDBOX=1
 
 - **Sandbox mode.** `DATAFORSEO_SANDBOX=1` routes requests to `sandbox.dataforseo.com`. Credentials are required. Estimated cost is USD 0, and responses contain sample data for testing. Set the variable to `0` or remove it for production queries. [DataForSEO sandbox](https://docs.dataforseo.com/v3/appendix-sandbox/)
 - **Cost estimates.** All three provider tools support `dry_run: true` to check configuration and estimate a batch offline. For live batches estimated above USD 0.50, Pi displays the total and per-item estimates and waits for confirmation before sending. Declining, cancelling, or running without an available confirmation interface blocks the batch. Live batches estimated at USD 0.50 or less can run directly and may incur charges.
+- **SERP timeouts.** The default 35-second request asks DataForSEO to resolve Google goto URLs. On timeout or HTTP 502/504, the tool tries once with a 30-second request and resolves remaining links locally. The dry-run estimate covers both possible requests. Set `resolve_goto_urls: false` for a single 30-second request with local resolution.
 - **Public research.** If live data is unavailable, use public search, web pages, or a supplied CSV for content and keyword planning. Competitor analysis also accepts public URLs directly.
 
 For a proxy network, set `HTTPS_PROXY` or `HTTP_PROXY` before starting Pi, and use `NO_PROXY` for exceptions. Fetch and DataForSEO tools read those variables. You can also set `NODE_USE_ENV_PROXY=1` for Node.js calls that support it.
