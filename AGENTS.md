@@ -13,10 +13,21 @@ All research, audits, and content must be grounded in target market, buyer inten
 4. Progressive skills: keep each `SKILL.md` concise and move detailed checklists/templates into `references/`.
 5. `_refs/` contains source repositories (`claude-seo`, `geo-seo-claude`, `claude-blog`) for domain logic reference ONLY. Never copy files verbatim.
 
-## Planned Modules
+## Skills and commands
 
-- **Skills**: `profile`, `seo-audit`, `seo-keyword-cluster`, `seo-geo`, `seo-schema`, `seo-brief`, `seo-write`, `seo-localize`, `seo-competitor`
-- **Optional Data Provider**: `dataforseo` (Keywords Data, SERP, Backlinks only). Read `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD` from the process environment first, then `profile/.env` for variables absent from the environment. Keep `profile/.env` in `.gitignore`. Include cost estimation and batch confirmation, and fall back to web scraping or user CSV import when unconfigured.
+| Skill | Prompt template |
+| --- | --- |
+| `profile` | `/seokit-init` |
+| `seo-audit` | `/seokit-audit` |
+| `seo-keyword-cluster` | `/seokit-cluster` |
+| `seo-brief` | `/seokit-article` (research and brief) |
+| `seo-write` | `/seokit-article` (draft and review) |
+| `seo-localize` | `/seokit-translate` |
+| `seo-geo` | `/seokit-geo` |
+| `seo-schema` | `/seokit-schema` |
+| `seo-competitor` | `/seokit-competitor` |
+
+The optional `dataforseo` provider covers Keywords Data, SERP, and Backlinks summaries. Read `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`, and `DATAFORSEO_SANDBOX` from the process environment first, then from `profile/.env` per variable. Keep credentials out of Git. Use `dry_run` for offline estimates and require Pi confirmation before sending a live batch estimated above USD 0.50. Sandbox responses are sample data. Use public research or supplied CSVs when live provider data is unavailable.
 
 ## Hard Exclusions (Do NOT Port)
 

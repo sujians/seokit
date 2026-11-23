@@ -4,6 +4,7 @@
   "description": "Universal SEO/GEO package for Pi agent, tailored for B2B manufacturing and export websites",
   "type": "module",
   "keywords": ["pi-package", "seo", "geo", "b2b", "manufacturing"],
+  "files": ["extensions/", "skills/", "prompts/", "scripts/smoke-seokit.mjs", "AGENTS.md"],
   "pi": {
     "extensions": ["./extensions/seokit/index.ts"],
     "skills": ["./skills"],

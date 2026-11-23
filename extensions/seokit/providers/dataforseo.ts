@@ -10,10 +10,12 @@ import { Type } from "typebox";
 import { EnvHttpProxyAgent, fetch, type Dispatcher, type Response } from "undici";
 import { analysisResult, objectOutput, type JsonValue } from "../tools/result.js";
 
-const apiOrigin = "https://api.dataforseo.com/v3/";
+const liveApiOrigin = "https://api.dataforseo.com/v3/";
+const sandboxApiOrigin = "https://sandbox.dataforseo.com/v3/";
 const usdMicros = 1_000_000;
 const confirmationThreshold = 500_000;
 const credentialNames = ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"] as const;
+const settingNames = [...credentialNames, "DATAFORSEO_SANDBOX"] as const;
 const fallback = ["Use public web search and seokit_fetch_page for competitor research.", "Import supplied keyword metrics from CSV with seokit_read_keyword_csv."];
 const pricing = {
   "keywords_data/google_ads/search_volume/live": "https://dataforseo.com/pricing/keywords-data/google-ads",
@@ -76,7 +78,7 @@ function literalKeyword(keyword: string) {
   return keyword.replaceAll("%", "%25").replaceAll("+", "%2B");
 }
 
-async function postTask(endpoint: Endpoint, task: Task, authorization: string, dispatcher?: Dispatcher, signal?: AbortSignal) {
+async function postTask(apiOrigin: string, endpoint: Endpoint, task: Task, authorization: string, dispatcher?: Dispatcher, signal?: AbortSignal) {
   const timeout = AbortSignal.timeout(task.timeoutMs ?? 45_000);
   let costUsd: number | null = null;
   try {
@@ -112,45 +114,51 @@ async function postTask(endpoint: Endpoint, task: Task, authorization: string, d
   }
 }
 
-async function readCredentials(cwd: string, signal?: AbortSignal) {
-  const environment = credentialNames.map((name) => process.env[name]);
+async function readSettings(cwd: string, signal?: AbortSignal) {
+  const environment = settingNames.map((name) => process.env[name]);
   if (environment.every((value) => value !== undefined)) return environment;
 
   try {
     const source = await readFile(join(cwd, "profile", ".env"), { encoding: "utf8", signal });
     const fileEnv = parseEnv(source.replace(/^\uFEFF/, ""));
-    return credentialNames.map((name, index) => environment[index] ?? fileEnv[name]);
+    return settingNames.map((name, index) => environment[index] ?? fileEnv[name]);
   } catch {
     // Treat an unavailable file as an absent source and keep file contents out of diagnostics.
     return environment;
   }
 }
 
-async function runBatch(endpoint: Endpoint, dryRun: boolean, buildTasks: () => Task[], ctx: ExtensionContext, signal?: AbortSignal) {
-  const credentials = await readCredentials(ctx.cwd, signal);
-  const [login, password] = credentials;
+async function runBatch(endpoint: Endpoint, dryRun: boolean, buildTasks: (sandbox: boolean) => Task[], ctx: ExtensionContext, signal?: AbortSignal) {
+  const [login, password, sandboxSetting] = await readSettings(ctx.cwd, signal);
+  const sandbox = sandboxSetting === "1";
+  const apiOrigin = sandbox ? sandboxApiOrigin : liveApiOrigin;
+  const credentials = [login, password];
   const missingEnv = credentialNames.filter((_, index) => !credentials[index]?.trim());
   const available = missingEnv.length === 0;
   const configuration = available ? null : "Set DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD in Pi’s environment or in profile/.env. Process environment values take precedence per variable.";
-  const base = { provider: "DataForSEO", endpoint, available };
+  const base = { provider: "DataForSEO", endpoint, available, sandbox };
   if (!available && !dryRun) return analysisResult({ ...base, status: "not_configured", missingEnv, configuration, fallback });
 
   let tasks: Task[];
   try {
-    tasks = buildTasks();
+    tasks = buildTasks(sandbox);
   } catch (error) {
     return analysisResult({ ...base, status: "invalid_input", message: (error as Error).message, missingEnv, configuration, fallback });
   }
 
-  const totalMicros = tasks.reduce((sum, task) => sum + task.costMicros, 0);
+  const totalMicros = sandbox ? 0 : tasks.reduce((sum, task) => sum + task.costMicros, 0);
   const requiresConfirmation = totalMicros > confirmationThreshold;
   const estimate = {
     currency: "USD",
     totalUsd: totalMicros / usdMicros,
     thresholdUsd: confirmationThreshold / usdMicros,
     requiresConfirmation,
-    pricingSource: pricing[endpoint],
-    tasks: tasks.map(({ description, units, costMicros }) => ({ description, units, estimatedUsd: costMicros / usdMicros })),
+    pricingSource: sandbox ? "https://docs.dataforseo.com/v3/appendix-sandbox/" : pricing[endpoint],
+    tasks: tasks.map(({ description, units, costMicros }) => ({
+      description,
+      units: sandbox ? "Sandbox request" : units,
+      estimatedUsd: sandbox ? 0 : costMicros / usdMicros,
+    })),
   };
   const batch = { ...base, estimate };
   if (dryRun) return analysisResult({ ...batch, status: "dry_run", missingEnv, configuration, fallback });
@@ -179,7 +187,7 @@ async function runBatch(endpoint: Endpoint, dryRun: boolean, buildTasks: () => T
     for (const task of tasks) {
       if (signal?.aborted) break;
       requestsAttempted++;
-      const result = await postTask(endpoint, task, authorization, dispatcher, signal);
+      const result = await postTask(apiOrigin, endpoint, task, authorization, dispatcher, signal);
       if (result.costUsd === null) unreportedCosts++;
       else reportedMicros += Math.round(result.costUsd * usdMicros);
       if (result.error !== undefined) {
@@ -431,14 +439,14 @@ function unresolvedDomain(item: ApiObject) {
   return host && isGoogleSearchHost(host) ? null : host || websiteName || null;
 }
 
-async function organicResults(items: ApiObject[], topN: number, cache: Map<string, GotoResolution>, dispatcher?: Dispatcher, signal?: AbortSignal) {
+async function organicResults(items: ApiObject[], topN: number, cache: Map<string, GotoResolution>, sandbox: boolean, dispatcher?: Dispatcher, signal?: AbortSignal) {
   const top = items.flatMap((item) => item.type === "organic" && typeof item.url === "string" && typeof item.rank_group === "number"
     ? [{ item, url: item.url, rank: item.rank_group }] : [])
     .sort((a, b) => a.rank - b.rank)
     .slice(0, topN)
     .map((entry) => ({ ...entry, goto: googleGotoUrl(entry.url) }));
   for (const { goto } of top) {
-    if (signal?.aborted) break;
+    if (sandbox || signal?.aborted) break;
     if (goto && !cache.has(goto.requestUrl)) {
       cache.set(goto.requestUrl, await queueGotoResolution(goto, dispatcher, signal));
     }
@@ -452,7 +460,7 @@ async function organicResults(items: ApiObject[], topN: number, cache: Map<strin
     }
     const resolved = cache.get(goto.requestUrl);
     if (resolved && "url" in resolved) return { ...entry, ...resolved };
-    const error = resolved?.error ?? "cancelled";
+    const error = resolved?.error ?? (sandbox ? "sandbox_sample" : "cancelled");
     const hint = gotoProxyHint(error, dispatcher);
     return {
       ...entry, domain: unresolvedDomain(item), unresolved_goto: true, goto_resolve_error: error,
@@ -476,7 +484,7 @@ export const dataForSeoSerpTool = defineTool({
   outputSchema: objectOutput,
   async execute(_id, { location, language_code, keywords, top_n = 10, device = "desktop", resolve_goto_urls = true, dry_run }, signal, _onUpdate, ctx) {
     const gotoCache = new Map<string, GotoResolution>();
-    return runBatch("serp/google/organic/live/regular", dry_run ?? false, () => {
+    return runBatch("serp/google/organic/live/regular", dry_run ?? false, (sandbox) => {
       const scope = market(location, language_code);
       const pages = Math.ceil(top_n / 10);
       return [...new Set(keywords.map((keyword) => cleanText(keyword, "Keyword")))].map((keyword) => {
@@ -491,7 +499,7 @@ export const dataForSeoSerpTool = defineTool({
           project: async ([result], dispatcher, signal) => ({
             ...scope, keyword, device, requestedTopN: top_n,
             observedAt: string(result?.datetime), searchUrl: string(result?.check_url),
-            organic: await organicResults(rows(result ? result.items : null), top_n, gotoCache, dispatcher, signal),
+            organic: await organicResults(rows(result ? result.items : null), top_n, gotoCache, sandbox, dispatcher, signal),
           }),
         };
       });

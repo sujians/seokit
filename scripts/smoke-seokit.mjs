@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -12,21 +12,33 @@ const { DefaultResourceLoader, createReadToolDefinition, createWriteToolDefiniti
   ? pathToFileURL(resolve(sdk)).href : "@earendil-works/pi-coding-agent");
 const cwd = await mkdtemp(join(tmpdir(), "seokit-smoke-"));
 const repoPath = (path) => fileURLToPath(new URL(`../${path}`, import.meta.url));
+const skillNames = [
+  "profile", "seo-audit", "seo-keyword-cluster", "seo-brief", "seo-write", "seo-localize",
+  "seo-geo", "seo-schema", "seo-competitor",
+];
 const promptPaths = {
   "seokit-init": "profile/profile.yaml",
   "seokit-cluster": "clusters/<keyword-slug>-clusters.yaml",
   "seokit-audit": "audits/<domain>-<date>.md",
+  "seokit-geo": "audits/<slug>-geo.md",
+  "seokit-schema": "drafts/<slug>-schema.jsonld",
   "seokit-article": "drafts/<slug>.md",
   "seokit-translate": "drafts/<slug>.<locale>.md",
+  "seokit-competitor": "audits/<slug>-competitor.md",
 };
 try {
+  assert.ok((await readFile(repoPath("README.md"), "utf8")).trim(), "README.md should contain release documentation");
+  for (const name of skillNames) assert.ok((await readFile(repoPath(`skills/${name}/SKILL.md`), "utf8")).trim());
+  for (const name of Object.keys(promptPaths)) assert.ok((await readFile(repoPath(`prompts/${name}.md`), "utf8")).trim());
+  await checkWorkspacePaths();
+
   const loader = new DefaultResourceLoader({
     cwd,
     agentDir: cwd,
-    additionalExtensionPaths: [repoPath("extensions/seokit/index.ts")],
-    additionalPromptTemplatePaths: Object.keys(promptPaths).map((name) => repoPath(`prompts/${name}.md`)),
+    additionalExtensionPaths: [repoPath(".")],
     noExtensions: true,
     noSkills: true,
+    noPromptTemplates: true,
     noThemes: true,
     noContextFiles: true,
   });
@@ -35,10 +47,10 @@ try {
   assert.deepEqual(errors, []);
   const tools = extensions.flatMap((extension) => [...extension.tools.values()]);
   const ctx = { cwd, hasUI: false };
-  const invoke = async (name, args) => {
+  const invoke = async (name, args, context = ctx) => {
     const tool = tools.find(({ definition }) => definition.name === name)?.definition;
     assert.ok(tool, `${name} was not registered`);
-    const result = await tool.execute(`smoke-${name}`, args, undefined, undefined, ctx);
+    const result = await tool.execute(`smoke-${name}`, args, undefined, undefined, context);
     assert.ok(!result.isError, `${name} returned an error`);
     return result;
   };
@@ -52,12 +64,17 @@ try {
   const writeFile = (path, content) => write.execute("smoke-write", { path, content }, undefined, undefined, ctx);
   const readBack = async (path) => (await read.execute("smoke-read", { path }, undefined, undefined, ctx)).content[0].text;
 
+  const { skills, diagnostics: skillDiagnostics } = loader.getSkills();
+  assert.deepEqual(skillDiagnostics, []);
+  assert.deepEqual(skills.map(({ name }) => name).sort(), [...skillNames].sort());
   const { prompts, diagnostics } = loader.getPrompts();
   assert.deepEqual(diagnostics, []);
+  assert.deepEqual(prompts.map(({ name }) => name).sort(), Object.keys(promptPaths).sort());
   for (const [name, path] of Object.entries(promptPaths)) {
     assert.ok(prompts.find((prompt) => prompt.name === name)?.content.includes(path), `${name} should use ${path}`);
   }
   assert.ok(prompts.find(({ name }) => name === "seokit-cluster").content.includes("clusters/<keyword-slug>-clusters.md"));
+  console.log(`PASS README, ${skills.length} skills, ${prompts.length} prompts, and workspace paths`);
   await assert.rejects(invoke("seokit_load_profile", {}), /Profile not found .*profile[/\\]profile\.yaml/);
   const profileFile = promptPaths["seokit-init"];
   const profileYaml = "schema_version: 1\nproject:\n  name: Smoke project\n";
@@ -83,6 +100,8 @@ try {
     "clusters/welding-clusters.yaml": "schema_version: 1\ntopic: Welding\nclusters: []\n",
     "clusters/welding-clusters.md": "# Welding\n",
     "audits/schema.org-2026-01-15.md": "# Smoke audit\n",
+    "audits/schema-org-product-geo.md": "# Smoke GEO audit\n",
+    "drafts/llms.txt": "# Smoke project\n\n## Products\n\n- [Product](https://schema.org/Product)\n",
     [`drafts/${slug}.md`]: markdown,
     [`drafts/${slug}.de-DE.md`]: "# Edelstahlgehäuse\n",
   };
@@ -97,14 +116,31 @@ try {
   assert.deepEqual(csv.rows, [{ recordNumber: 1, keyword, volume: "0" }]);
   console.log("PASS project profile, topic plans, audits, drafts, translations and CSV import");
 
+  const howTo = JSON.stringify({ "@context": "https://schema.org", "@type": "HowTo" });
+  const validate = (blocks, options) => run("seokit_validate_schema", { blocks, ...options });
+  const defaultHowTo = await validate([howTo]);
+  assert.equal(defaultHowTo.valid, false);
+  assert.equal(defaultHowTo.issues[0].code, "retired-rich-result");
+  const allowedHowTo = await validate([howTo], { allowHowTo: true });
+  assert.equal(allowedHowTo.valid, true);
+  assert.equal(allowedHowTo.issues[0].code, "retired-howto-rich-result");
+  const retiredClaimReview = howTo.replace("HowTo", "ClaimReview");
+  assert.equal((await validate([retiredClaimReview], { allowHowTo: true })).valid, false);
+  assert.equal((await validate(["{invalid"], { allowHowTo: true })).valid, false);
+
   await checkDataForSeo(invoke, writeFile);
-  console.log("PASS DataForSEO credentials and Google goto resolution (mock API and GET requests)");
+  console.log("PASS DataForSEO credentials, live cost gate, sandbox routing and Google goto resolution (mocked)");
 
   const page = await run("seokit_fetch_page", { url: process.argv[2] ?? "https://schema.org/Product" });
   assert.ok(page.status >= 200 && page.status < 300 && page.html && !page.truncated);
   assert.ok(Array.isArray(page.redirects) && page.headers["content-type"]);
   assert.ok(page.robots.status && page.llms.status, "Expected HTTP responses from both root files");
   assert.ok(page.robots.bots.some(({ userAgent }) => userAgent === "GPTBot"));
+  const robots = await run("seokit_check_robots", { url: page.url });
+  const target = new URL(page.url);
+  assert.equal(robots.targetUrl, page.url);
+  assert.equal(robots.testedPath, target.pathname + target.search);
+  assert.ok(robots.bots.some(({ userAgent }) => userAgent === "OAI-SearchBot"));
   const seo = await run("seokit_parse_seo", { url: page.url, html: page.html });
   assert.ok(seo.title && seo.headings.length > 0 && seo.jsonLd.length > 0, "Use a page with headings and JSON-LD");
   const schema = await run("seokit_validate_schema", { blocks: seo.jsonLd.map(({ raw }) => raw) });
@@ -118,10 +154,24 @@ try {
   await rm(cwd, { recursive: true, force: true });
 }
 
+async function checkWorkspacePaths(directory = repoPath(".")) {
+  const excludedDirectories = new Set([".git", "_refs", "node_modules"]);
+  const legacyPath = ".seokit" + "/";
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory() && !excludedDirectories.has(entry.name)) await checkWorkspacePaths(path);
+    if (entry.isFile() && entry.name !== ".env" && !entry.name.endsWith(".log")) {
+      const file = await readFile(path);
+      assert.ok(!file.includes(legacyPath), `${path} contains a legacy workspace path`);
+    }
+  }
+}
+
 async function checkDataForSeo(invoke, writeFile) {
   const loginKey = "DATAFORSEO_LOGIN";
   const passwordKey = "DATAFORSEO_PASSWORD";
-  const keys = [loginKey, passwordKey, "https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY", "NODE_USE_ENV_PROXY"];
+  const sandboxKey = "DATAFORSEO_SANDBOX";
+  const keys = [loginKey, passwordKey, sandboxKey, "https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY", "NODE_USE_ENV_PROXY"];
   const savedEnv = keys.map((key) => process.env[key]);
   const dispatcher = getGlobalDispatcher();
   const mock = new MockAgent();
@@ -136,8 +186,8 @@ async function checkDataForSeo(invoke, writeFile) {
   const secrets = [fileLogin, filePassword, envLogin, envPassword];
   const market = { location: 2840, language_code: "en" };
   const args = { queries: [{ ...market, keywords: ["enclosures"] }] };
-  const runProvider = async (name, params) => {
-    const result = await invoke(`seokit_dataforseo_${name}`, params);
+  const runProvider = async (name, params, context) => {
+    const result = await invoke(`seokit_dataforseo_${name}`, params, context);
     assert.ok(secrets.every((secret) => !JSON.stringify(result).includes(secret)), "Provider exposed credentials");
     return result.structuredContent;
   };
@@ -183,6 +233,7 @@ async function checkDataForSeo(invoke, writeFile) {
     await checkGoogleGotoSession(mock, runProvider, market);
     await checkGoogleGoto(mock, runProvider, market);
     await checkGoogleGotoRedirects(mock, runProvider, market);
+    await checkDataForSeoModes(mock, runProvider, writeFile, market);
     process.env[loginKey] = "";
     assert.deepEqual((await runProvider("keywords", args)).missingEnv, [loginKey]);
   } finally {
@@ -193,6 +244,87 @@ async function checkDataForSeo(invoke, writeFile) {
     setGlobalDispatcher(dispatcher);
     await mock.close();
   }
+}
+
+async function checkDataForSeoModes(mock, runProvider, writeFile, market) {
+  const sandboxKey = "DATAFORSEO_SANDBOX";
+  const queries = Array.from({ length: 6 }, (_, index) => ({ ...market, keywords: [`enclosures ${index}`] }));
+  const params = { queries };
+  const path = "/v3/keywords_data/google_ads/search_volume/live";
+  mock.enableCallHistory();
+  mock.clearCallHistory();
+  const history = () => mock.getCallHistory()?.calls() ?? [];
+
+  const liveEstimate = await runProvider("keywords", { ...params, dry_run: true });
+  assert.equal(liveEstimate.sandbox, false);
+  assert.equal(liveEstimate.estimate.totalUsd, 0.54);
+  assert.equal(liveEstimate.estimate.requiresConfirmation, true);
+  assert.equal((await runProvider("keywords", params)).status, "confirmation_required");
+  let confirmationMessage;
+  const context = {
+    cwd,
+    hasUI: true,
+    ui: { confirm: async (_title, message) => {
+      confirmationMessage = message;
+      return false;
+    } },
+  };
+  assert.equal((await runProvider("keywords", params, context)).status, "declined");
+  assert.match(confirmationMessage, /\$0\.54 USD for 6 API requests/);
+  assert.equal(history().length, 0);
+  const live = mock.get("https://api.dataforseo.com");
+  live.intercept({ path, method: "POST" }).reply(200, {
+    status_code: 20000, cost: 0.09, tasks: [{ status_code: 20000, result: [] }],
+  }).times(queries.length);
+  context.ui.confirm = async () => {
+    assert.equal(history().length, 0);
+    return true;
+  };
+  const approved = await runProvider("keywords", params, context);
+  assert.equal(approved.status, "ok");
+  assert.equal(approved.reportedCostUsd, 0.54);
+  assert.equal(history().length, queries.length);
+  mock.clearCallHistory();
+
+  await writeFile("profile/.env", `${sandboxKey}=1\n`);
+  const sandboxEstimate = await runProvider("keywords", { ...params, dry_run: true });
+  assert.equal(sandboxEstimate.sandbox, true);
+  assert.equal(sandboxEstimate.estimate.totalUsd, 0);
+  assert.equal(sandboxEstimate.estimate.requiresConfirmation, false);
+  assert.ok(sandboxEstimate.estimate.tasks.every(({ estimatedUsd }) => estimatedUsd === 0));
+  assert.equal(history().length, 0);
+  const sandboxOrigin = "https://sandbox.dataforseo.com";
+  const sandbox = mock.get(sandboxOrigin);
+  sandbox.intercept({ path, method: "POST" }).reply(200, {
+    status_code: 20000, cost: 0, tasks: [{ status_code: 20000, result: [] }],
+  }).times(queries.length);
+  const sandboxBatch = await runProvider("keywords", params);
+  assert.equal(sandboxBatch.status, "ok");
+  assert.equal(sandboxBatch.sandbox, true);
+  assert.equal(sandboxBatch.reportedCostUsd, 0);
+  assert.deepEqual(history().map(({ fullUrl }) => fullUrl), Array(queries.length).fill(sandboxOrigin + path));
+  mock.clearCallHistory();
+
+  const serpPath = "/v3/serp/google/organic/live/regular";
+  const items = [{ type: "organic", rank_group: 1, url: "https://www.google.com/goto?url=sample" }];
+  sandbox.intercept({ path: serpPath, method: "POST" }).reply(200, {
+    status_code: 20000, cost: 0, tasks: [{ status_code: 20000, result: [{ items }] }],
+  });
+  const serp = await runProvider("serp", { ...market, keywords: ["enclosures"] });
+  assert.equal(serp.results[0].organic[0].goto_resolve_error, "sandbox_sample");
+  assert.deepEqual(history().map(({ fullUrl }) => fullUrl), [sandboxOrigin + serpPath]);
+  sandbox.intercept({ path, method: "POST" }).reply(503, {});
+  const failed = await runProvider("keywords", params);
+  assert.equal(failed.status, "request_failed");
+  assert.deepEqual(history().map(({ fullUrl }) => fullUrl), [sandboxOrigin + serpPath, sandboxOrigin + path]);
+
+  process.env[sandboxKey] = "0";
+  assert.equal((await runProvider("keywords", params)).status, "confirmation_required");
+  process.env[sandboxKey] = "1";
+  await writeFile("profile/.env", "# Sandbox mode now comes from the process environment\n");
+  assert.equal((await runProvider("keywords", { ...params, dry_run: true })).sandbox, true);
+  mock.assertNoPendingInterceptors();
+  mock.disableCallHistory();
 }
 
 async function checkGoogleGotoSession(mock, runProvider, market) {

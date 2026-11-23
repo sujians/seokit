@@ -5,7 +5,7 @@ import { Type, type TSchema } from "typebox";
 import { Value } from "typebox/value";
 import { parse, parseDocument } from "yaml";
 import { dataForSeoBacklinksTool, dataForSeoKeywordsTool, dataForSeoSerpTool } from "./providers/dataforseo.js";
-import { fetchPageTool } from "./tools/fetch-page.js";
+import { checkRobotsTool, fetchPageTool } from "./tools/fetch-page.js";
 import { parseSeoTool } from "./tools/parse-seo.js";
 import { readKeywordCsvTool } from "./tools/read-keyword-csv.js";
 import { scoreGeoTool } from "./tools/score-geo.js";
@@ -15,6 +15,7 @@ const schemaUrl = new URL("../../skills/profile/references/profile-schema.yaml",
 
 export default function (pi: ExtensionAPI) {
   pi.registerTool(fetchPageTool);
+  pi.registerTool(checkRobotsTool);
   pi.registerTool(parseSeoTool);
   pi.registerTool(readKeywordCsvTool);
   pi.registerTool(validateSchemaTool);

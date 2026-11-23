@@ -3,8 +3,9 @@ import { Type } from "typebox";
 import { MAX_HTML_BYTES, analysisResult, objectOutput } from "./result.js";
 
 const GOOGLE_2025 = "https://developers.google.com/search/blog/2025/06/simplifying-search-results";
+const HOW_TO_RETIREMENT = "https://developers.google.com/search/blog/2023/08/howto-faq-changes";
 const RETIRED = new Map([
-  ["HowTo", "https://developers.google.com/search/blog/2023/08/howto-faq-changes"],
+  ["HowTo", HOW_TO_RETIREMENT],
   ["CourseInfo", GOOGLE_2025], ["ClaimReview", GOOGLE_2025], ["EstimatedSalary", GOOGLE_2025],
   ["OccupationalAggregateRating", GOOGLE_2025], ["LearningVideo", GOOGLE_2025],
   ["SpecialAnnouncement", GOOGLE_2025], ["VehicleListing", GOOGLE_2025], ["Vehicle", GOOGLE_2025],
@@ -90,7 +91,7 @@ function auditFields(node: JsonObject, types: string[], path: string, report: (i
   }
 }
 
-function auditBlock(source: string, block: number, issues: Issue[]) {
+function auditBlock(source: string, block: number, issues: Issue[], allowHowTo: boolean) {
   const report = (issue: Report) => issues.push({ block, ...issue });
   let root: unknown;
   try {
@@ -121,7 +122,9 @@ function auditBlock(source: string, block: number, issues: Issue[]) {
     }
     for (const type of new Set(types)) {
       const source = RETIRED.get(type);
-      if (source) report({ path: `${path}.@type`, severity: "error", code: "retired-rich-result", message: `${type} is blocked by the SEO policy for retired Google rich results.`, source });
+      if (type === "HowTo" && allowHowTo) report({ path: `${path}.@type`, severity: "info", code: "retired-howto-rich-result",
+        message: "HowTo is accepted as Schema.org markup. Google removed the HowTo rich result in September 2023.", source: HOW_TO_RETIREMENT });
+      else if (source) report({ path: `${path}.@type`, severity: "error", code: "retired-rich-result", message: `${type} is blocked by the SEO policy for retired Google rich results.`, source });
       if (type === "FAQPage") report({ path: `${path}.@type`, severity: "info", code: "retired-faq-rich-result",
         message: "Google removed the FAQ rich result in May 2026.", source: "https://developers.google.com/search/updates#removing-faq-rich-result" });
     }
@@ -147,15 +150,16 @@ function auditBlock(source: string, block: number, issues: Issue[]) {
 export const validateSchemaTool = defineTool({
   name: "seokit_validate_schema",
   label: "Validate JSON-LD for SEO",
-  description: "Check raw JSON-LD blocks for JSON syntax, retired Google rich-result types, and B2B Product and Organization fields. Public prices are optional for inquiry products. Pass raw blocks from seokit_parse_seo.",
+  description: "Check raw JSON-LD blocks for JSON syntax, retired Google rich-result types, and B2B Product and Organization fields. Public prices are optional for inquiry products. Pass blocks from seokit_parse_seo or a generated draft.",
   parameters: Type.Object({
     blocks: Type.Array(Type.String({ maxLength: MAX_HTML_BYTES })),
+    allowHowTo: Type.Optional(Type.Boolean({ description: "Accept HowTo as Schema.org markup and report its retired Google rich result as information. Defaults to false." })),
   }, { additionalProperties: false }),
   outputSchema: objectOutput,
   annotations: { readOnlyHint: true, openWorldHint: false },
-  async execute(_id, { blocks }) {
+  async execute(_id, { blocks, allowHowTo = false }) {
     const issues: Issue[] = [];
-    const nodesChecked = blocks.reduce((count, block, index) => count + auditBlock(block, index, issues), 0);
+    const nodesChecked = blocks.reduce((count, block, index) => count + auditBlock(block, index, issues, allowHowTo), 0);
     return analysisResult({
       valid: issues.every(({ severity }) => severity !== "error"),
       blocksChecked: blocks.length,

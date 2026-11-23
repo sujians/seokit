@@ -12,7 +12,7 @@ description: Build a research-backed B2B manufacturing content brief from compet
 
 ## 可选 DataForSEO 数据
 
-目标国家与语言明确时，选用 DataForSEO 的国家名称或代码作为 `location`，语言代码作为 `language_code`。用 `seokit_dataforseo_serp({ location, language_code, keywords, top_n: 10, dry_run: true })` 检查凭据是否齐全并估算整批费用。`available` 为 `true` 时，沿用同一批参数并省略 `dry_run`，从 `organic`、`observedAt` 和 `searchUrl` 获取证据。已有可比词量可直接引用，否则对候选词用 `seokit_dataforseo_keywords({ queries: [{ location, language_code, keywords }], dry_run: true })` 先估算再查询。注明 Google Ads 近似月均值及统计口径，缺失指标留空。
+目标国家与语言明确时，选用 DataForSEO 的国家名称或代码作为 `location`，语言代码作为 `language_code`。用 `seokit_dataforseo_serp({ location, language_code, keywords, top_n: 10, dry_run: true })` 检查凭据是否齐全并估算整批费用。`available: true` 且 `sandbox: false` 时，沿用同一批参数并省略 `dry_run`，从 `organic`、`observedAt` 和 `searchUrl` 获取证据。`sandbox: true` 时改用公开搜索或用户提供的 CSV，沙盒数据只供集成测试。已有可比词量可直接引用，否则对候选词用 `seokit_dataforseo_keywords({ queries: [{ location, language_code, keywords }], dry_run: true })` 先估算再查询。注明 Google Ads 近似月均值及统计口径，缺失指标留空。
 
 批次估算超过 $0.50 时在 Pi 确认框中展示费用与明细，取得用户确认后才发送。工具或凭据缺失、请求失败、确认未获批准或样本不足时继续用公开搜索定位样本，有用户提供的 CSV 时可导入词量。`partial` 可使用已成功返回的数据。
 

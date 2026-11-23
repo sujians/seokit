@@ -45,6 +45,13 @@ const publicLookup: LookupFunction = (hostname, options, callback) => {
   }, (error: Error) => callback(error, "", 0));
 };
 
+function createPageDispatcher() {
+  const proxied = Boolean(process.env.http_proxy || process.env.HTTP_PROXY || process.env.https_proxy || process.env.HTTPS_PROXY);
+  const options = { connect: { lookup: publicLookup } };
+  const dispatcher = proxied ? new EnvHttpProxyAgent(options) : new Agent(options);
+  return { dispatcher, proxied };
+}
+
 function webUrl(input: string, base?: URL): URL {
   const url = new URL(input, base);
   if (!/^https?:$/.test(url.protocol) || url.username || url.password) {
@@ -143,6 +150,30 @@ async function probeFile(path: string, origin: URL, dispatcher: Dispatcher, prox
   }
 }
 
+async function probeRobots(target: URL, dispatcher: Dispatcher, proxied: boolean, signal?: AbortSignal) {
+  const { text, ...metadata } = await probeFile("/robots.txt", target, dispatcher, proxied, signal);
+  return { ...metadata, ...analyzeRobots(text, target, metadata.exists === false) };
+}
+
+export const checkRobotsTool = defineTool({
+  name: "seokit_check_robots",
+  label: "Check crawler rules for a URL",
+  description: "Check robots.txt rules for a public HTTP(S) URL, including AI crawler decisions and matched rules for its path and query. Pass the final page URL after redirects. Fetches robots.txt only.",
+  parameters: Type.Object({ url: Type.String({ minLength: 1 }) }, { additionalProperties: false }),
+  outputSchema: objectOutput,
+  annotations: { readOnlyHint: true, openWorldHint: true },
+  async execute(_id, { url }, signal) {
+    const target = webUrl(url);
+    const { dispatcher, proxied } = createPageDispatcher();
+    try {
+      const robots = await probeRobots(target, dispatcher, proxied, signal);
+      return analysisResult({ targetUrl: target.href, ...robots });
+    } finally {
+      await dispatcher.destroy();
+    }
+  },
+});
+
 export const fetchPageTool = defineTool({
   name: "seokit_fetch_page",
   label: "Fetch page and crawler files",
@@ -152,28 +183,17 @@ export const fetchPageTool = defineTool({
   annotations: { readOnlyHint: true, openWorldHint: true },
   async execute(_id, { url }, signal) {
     const requested = webUrl(url);
-    const proxied = Boolean(process.env.http_proxy || process.env.HTTP_PROXY || process.env.https_proxy || process.env.HTTPS_PROXY);
-    const options = { connect: { lookup: publicLookup } };
-    const dispatcher = proxied ? new EnvHttpProxyAgent(options) : new Agent(options);
+    const { dispatcher, proxied } = createPageDispatcher();
     try {
       const page = await getPage(requested, dispatcher, timeoutSignal(15_000, signal), proxied, MAX_HTML_BYTES);
       const { text: html, ...metadata } = page;
       const finalUrl = new URL(page.url);
       const [robots, llms] = await Promise.all([
-        probeFile("/robots.txt", finalUrl, dispatcher, proxied, signal),
+        probeRobots(finalUrl, dispatcher, proxied, signal),
         probeFile("/llms.txt", finalUrl, dispatcher, proxied, signal),
       ]);
-      const { text: rules, ...robotsMetadata } = robots;
       const { text: _llmsText, ...llmsMetadata } = llms;
-      const result = {
-        requestedUrl: requested.href,
-        ...metadata,
-        robots: {
-          ...robotsMetadata,
-          ...analyzeRobots(rules, finalUrl, robots.exists === false),
-        },
-        llms: llmsMetadata,
-      };
+      const result = { requestedUrl: requested.href, ...metadata, robots, llms: llmsMetadata };
       return analysisResult({ ...result, html }, { ...result, htmlCharacters: html.length });
     } finally {
       await dispatcher.destroy();
