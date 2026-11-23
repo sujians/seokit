@@ -1,11 +1,13 @@
 import { defineTool, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { load } from "cheerio";
 import { readFile } from "node:fs/promises";
 import { isIP } from "node:net";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { domainToASCII } from "node:url";
 import { parseEnv } from "node:util";
 import { Type } from "typebox";
-import { EnvHttpProxyAgent, fetch, type Dispatcher } from "undici";
+import { EnvHttpProxyAgent, fetch, type Dispatcher, type Response } from "undici";
 import { analysisResult, objectOutput, type JsonValue } from "../tools/result.js";
 
 const apiOrigin = "https://api.dataforseo.com/v3/";
@@ -25,6 +27,7 @@ type Task = {
   description: string;
   costMicros: number;
   units: string;
+  timeoutMs?: number;
   project: (rows: ApiObject[], dispatcher?: Dispatcher, signal?: AbortSignal) => JsonValue | Promise<JsonValue>;
 };
 
@@ -74,7 +77,7 @@ function literalKeyword(keyword: string) {
 }
 
 async function postTask(endpoint: Endpoint, task: Task, authorization: string, dispatcher?: Dispatcher, signal?: AbortSignal) {
-  const timeout = AbortSignal.timeout(45_000);
+  const timeout = AbortSignal.timeout(task.timeoutMs ?? 45_000);
   let costUsd: number | null = null;
   try {
     const response = await fetch(apiOrigin + endpoint, {
@@ -258,42 +261,158 @@ function isGoogleSearchHost(hostname: string) {
   return host.startsWith("google.") && googleSearchSuffixes.has(host.slice("google.".length));
 }
 
-function googleGotoUrl(input: string) {
-  const value = input.trim();
-  const url = URL.parse(value, value.startsWith("/") ? "https://www.google.com" : undefined);
-  if (!url || !/^https?:$/.test(url.protocol) || !isGoogleSearchHost(url.hostname) ||
-    url.pathname !== "/goto" || !url.searchParams.has("url")) return null;
-  url.hash = "";
-  return url;
+const maxGoogleRedirects = 3;
+const maxGotoHtmlBytes = 128 * 1024;
+const gotoToken = /(?:^\?|&)url(?:=([^&]*))?(?=&|$)/;
+
+type GotoTarget = { requestUrl: string; url: URL };
+type GotoResolution = { url: string; domain: string } | { error: string };
+
+// Concurrent SERP calls can return links that share a Google session.
+let gotoQueue = Promise.resolve();
+let nextGotoRequestAt = 0;
+
+function isGoogleDomain(hostname: string) {
+  const match = /(?:^|\.)google\.(.+)$/.exec(hostname.replace(/\.$/, ""));
+  return match !== null && googleSearchSuffixes.has(match[1]);
 }
 
-async function resolveGotoUrlLocally(url: URL, dispatcher?: Dispatcher, signal?: AbortSignal) {
-  if (url.port || url.username || url.password || !url.searchParams.get("url") || signal?.aborted) return null;
-  const timeout = AbortSignal.timeout(5_000);
+function googleGotoUrl(input: string): GotoTarget | null {
+  // Validate a separate URL object while keeping the provider's request string intact.
+  const requestUrl = input.startsWith("//") ? `https:${input}`
+    : input.startsWith("/") ? `https://www.google.com${input}`
+    : input.replace(/^https:\/\/google\.com\/goto(?=\?)/, "https://www.google.com/goto");
+  const url = URL.parse(requestUrl);
+  if (!url || !/^https?:$/.test(url.protocol) || !isGoogleSearchHost(url.hostname) ||
+    url.pathname !== "/goto" || !gotoToken.test(url.search)) return null;
+  return { requestUrl, url };
+}
+
+function gotoTarget(value: string, base: URL): GotoTarget | null {
+  if (!value.trim()) return null;
+  const url = URL.parse(value, base);
+  if (!url || !/^https?:$/.test(url.protocol) || url.username || url.password) return null;
+  return { requestUrl: /^https?:\/\//i.test(value) ? value : url.href, url };
+}
+
+function cleanLandingUrl(url: URL) {
+  if (url.searchParams.has("srsltid")) {
+    url.search = url.search.slice(1).split("&")
+      .filter((parameter) => !new URLSearchParams(`?${parameter}`).has("srsltid")).join("&");
+  }
+  return { url: url.href, domain: normalizedHostname(url.hostname) };
+}
+
+async function gotoHtmlTarget(response: Response, base: URL) {
+  const reader = response.body?.getReader();
+  if (!reader) return null;
+  const chunks: Uint8Array[] = [];
+  let size = 0;
   try {
-    const response = await fetch(url, {
+    while (size < maxGotoHtmlBytes) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = value.subarray(0, maxGotoHtmlBytes - size);
+      chunks.push(chunk);
+      size += chunk.byteLength;
+    }
+  } finally {
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+  const $ = load(Buffer.concat(chunks).toString("utf8"), { scriptingEnabled: false });
+  const refresh = $('meta[http-equiv="refresh" i]').first().attr("content") ?? "";
+  const refreshUrl = /[;,]\s*url\s*=\s*(.+)/is.exec(refresh)?.[1].trim().replace(/^(["'])(.*)\1$/s, "$2");
+  const canonical = $('link[rel~="canonical" i]').first().attr("href");
+  return gotoTarget(refreshUrl ?? "", base) ?? gotoTarget(canonical ?? "", base);
+}
+
+function gotoRequestError(error: unknown) {
+  const cause = error instanceof Error ? (error.cause ?? error) : null;
+  const code = cause && typeof cause === "object" && "code" in cause ? cause.code : null;
+  if (code === "ETIMEDOUT" || code === "UND_ERR_CONNECT_TIMEOUT" ||
+    code === "UND_ERR_HEADERS_TIMEOUT" || code === "UND_ERR_BODY_TIMEOUT") return "timeout";
+  // Include a system error code when available without exposing raw errors or proxy URLs.
+  return typeof code === "string" && /^[A-Z][A-Z0-9_]{1,63}$/.test(code) ? `network_error: ${code}` : "network_error";
+}
+
+function gotoProxyHint(error: string, dispatcher?: Dispatcher) {
+  if (!error.startsWith("network_error") && !["timeout", "http_200_no_redirect", "http_403", "http_407", "http_429", "google_sorry"].includes(error)) return;
+  if (dispatcher) return "Proxy environment detected. Verify HTTPS_PROXY (or https_proxy) and whether NO_PROXY bypasses Google.";
+  const proxyFlag = process.env.NODE_USE_ENV_PROXY === "1" ? "NODE_USE_ENV_PROXY=1 is set. " : "";
+  return `${proxyFlag}Set HTTPS_PROXY (or https_proxy) if Google requires a proxy. Undici uses the proxy URL directly.`;
+}
+
+async function fetchGoto({ requestUrl, url }: GotoTarget, dispatcher?: Dispatcher, signal?: AbortSignal): Promise<{ target: GotoTarget } | { error: string }> {
+  const wait = Math.ceil(nextGotoRequestAt - performance.now());
+  if (wait > 0) await delay(wait, undefined, { signal });
+  signal?.throwIfAborted();
+  const timeout = AbortSignal.timeout(10_000);
+  try {
+    const response = await fetch(requestUrl, {
       method: "GET",
       redirect: "manual",
-      headers: { "User-Agent": "seokit/0.1 (Google SERP link resolution)" },
+      headers: { "User-Agent": "Mozilla/5.0", Connection: "close" },
       dispatcher,
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
-    const location = response.headers.get("location");
-    void response.body?.cancel().catch(() => {});
-    if (response.status < 300 || response.status >= 400 || !location) return null;
+    if (response.status === 200) {
+      const target = await gotoHtmlTarget(response, url);
+      return target ? { target } : { error: "http_200_no_redirect" };
+    }
 
-    const target = URL.parse(location, url);
-    if (!target || !/^https?:$/.test(target.protocol) || target.username || target.password) return null;
-    if (isGoogleSearchHost(target.hostname) && /^\/(?:goto|sorry|url)(?:\/|$)/.test(target.pathname)) return null;
-    if (target.hostname === "consent.google.com" || target.hostname === "sorry.google.com") return null;
-    if (target.searchParams.has("srsltid")) target.searchParams.delete("srsltid");
-    return { url: target.href, domain: normalizedHostname(target.hostname) };
-  } catch {
-    return null;
+    await response.body?.cancel().catch(() => {});
+    if (response.status < 300 || response.status >= 400) return { error: `http_${response.status}` };
+    const location = response.headers.get("location");
+    if (!location) return { error: `http_${response.status}_missing_location` };
+    const target = gotoTarget(location, url);
+    return target ? { target } : { error: "invalid_redirect_url" };
+  } catch (error) {
+    return { error: signal?.aborted ? "cancelled" : timeout.aborted ? "timeout" : gotoRequestError(error) };
+  } finally {
+    nextGotoRequestAt = performance.now() + 800;
   }
 }
 
-type GotoResolution = Awaited<ReturnType<typeof resolveGotoUrlLocally>>;
+async function resolveGotoUrlLocally(initial: GotoTarget, dispatcher?: Dispatcher, signal?: AbortSignal): Promise<GotoResolution> {
+  const { url: initialUrl } = initial;
+  if (initialUrl.port || initialUrl.username || initialUrl.password || !gotoToken.exec(initialUrl.search)?.[1]) return { error: "invalid_goto_url" };
+  const retryDelays = [2_000, 4_000];
+  const visited = new Set<string>();
+  let current = initial;
+  let retries = 0;
+  try {
+    for (let redirects = 0; ; redirects++) {
+      signal?.throwIfAborted();
+      const requestKey = current.url.href.split("#", 1)[0];
+      if (visited.has(requestKey)) return { error: "still_google_redirect" };
+      visited.add(requestKey);
+
+      let result = await fetchGoto(current, dispatcher, signal);
+      while ("error" in result && retries < retryDelays.length &&
+        (result.error === "http_400" || result.error === "http_429" || result.error === "timeout")) {
+        await delay(retryDelays[retries++], undefined, { signal });
+        result = await fetchGoto(current, dispatcher, signal);
+      }
+      if ("error" in result) return result;
+      const { target } = result;
+      const { url: nextUrl } = target;
+      if (!isGoogleDomain(nextUrl.hostname)) return cleanLandingUrl(nextUrl);
+      if (/^\/sorry(?:\/|$)/i.test(nextUrl.pathname) || nextUrl.hostname.startsWith("sorry.google.")) return { error: "google_sorry" };
+      if (nextUrl.port) return { error: "invalid_redirect_url" };
+      if (redirects >= maxGoogleRedirects) return { error: "still_google_redirect" };
+      current = target;
+    }
+  } catch (error) {
+    return { error: signal?.aborted ? "cancelled" : gotoRequestError(error) };
+  }
+}
+
+function queueGotoResolution(goto: GotoTarget, dispatcher?: Dispatcher, signal?: AbortSignal) {
+  const resolution = gotoQueue.then(() => resolveGotoUrlLocally(goto, dispatcher, signal));
+  gotoQueue = resolution.then(() => {}, () => {});
+  return resolution;
+}
 
 function breadcrumbHostname(value: unknown) {
   const first = string(value)?.trim().split(/[\s›»>]/, 1)[0];
@@ -318,40 +437,44 @@ async function organicResults(items: ApiObject[], topN: number, cache: Map<strin
     .sort((a, b) => a.rank - b.rank)
     .slice(0, topN)
     .map((entry) => ({ ...entry, goto: googleGotoUrl(entry.url) }));
-  const pending = new Map<string, URL>();
   for (const { goto } of top) {
-    if (goto && !cache.has(goto.href)) pending.set(goto.href, goto);
-  }
-
-  const work = pending.values();
-  await Promise.all(Array.from({ length: Math.min(4, pending.size) }, async () => {
-    for (const goto of work) {
-      if (signal?.aborted) break;
-      cache.set(goto.href, await resolveGotoUrlLocally(goto, dispatcher, signal));
+    if (signal?.aborted) break;
+    if (goto && !cache.has(goto.requestUrl)) {
+      cache.set(goto.requestUrl, await queueGotoResolution(goto, dispatcher, signal));
     }
-  }));
+  }
 
   return top.map<JsonValue>(({ item, url, rank, goto }) => {
     const entry = { rank, absoluteRank: number(item.rank_absolute), url, title: string(item.title), domain: string(item.domain) };
-    if (!goto) return entry;
-    const resolved = cache.get(goto.href);
-    return resolved ? { ...entry, ...resolved } : { ...entry, domain: unresolvedDomain(item), unresolved_goto: true };
+    if (!goto) {
+      const landing = URL.parse(url);
+      return landing && /^https?:$/.test(landing.protocol) ? { ...entry, ...cleanLandingUrl(landing) } : entry;
+    }
+    const resolved = cache.get(goto.requestUrl);
+    if (resolved && "url" in resolved) return { ...entry, ...resolved };
+    const error = resolved?.error ?? "cancelled";
+    const hint = gotoProxyHint(error, dispatcher);
+    return {
+      ...entry, domain: unresolvedDomain(item), unresolved_goto: true, goto_resolve_error: error,
+      ...(hint ? { goto_resolve_hint: hint } : {}),
+    };
   });
 }
 
 export const dataForSeoSerpTool = defineTool({
   name: "seokit_dataforseo_serp",
   label: "DataForSEO Google organic rankings",
-  description: "Fetch up to top_n organic Google results per keyword for a country, language and device. Output may contain fewer organic results when the provider returns less. Use dry_run to estimate spending before calling the live endpoint.",
+  description: "Fetch up to top_n organic Google results per keyword for a country, language and device. Output may contain fewer organic results when the provider returns less. DataForSEO resolves Google goto links by default, with local resolution for remaining goto links. Use dry_run to estimate spending before calling the live endpoint.",
   parameters: Type.Object({
     ...marketFields,
     keywords: Type.Array(Type.String({ minLength: 1, maxLength: 700 }), { minItems: 1, maxItems: 25 }),
     top_n: Type.Optional(Type.Integer({ minimum: 1, maximum: 200, default: 10 })),
     device: Type.Optional(Type.Union([Type.Literal("desktop"), Type.Literal("mobile")], { default: "desktop" })),
+    resolve_goto_urls: Type.Optional(Type.Boolean({ default: true, description: "Ask DataForSEO to resolve Google goto links on the same Live request. Set false to use local resolution only." })),
     dry_run: dryRunOption,
   }, { additionalProperties: false }),
   outputSchema: objectOutput,
-  async execute(_id, { location, language_code, keywords, top_n = 10, device = "desktop", dry_run }, signal, _onUpdate, ctx) {
+  async execute(_id, { location, language_code, keywords, top_n = 10, device = "desktop", resolve_goto_urls = true, dry_run }, signal, _onUpdate, ctx) {
     const gotoCache = new Map<string, GotoResolution>();
     return runBatch("serp/google/organic/live/regular", dry_run ?? false, () => {
       const scope = market(location, language_code);
@@ -360,7 +483,8 @@ export const dataForSeoSerpTool = defineTool({
         const operatorCount = [...keyword.matchAll(searchOperator)].length;
         // Use the full live rate for every page and the published per-operator multiplier.
         return {
-          payload: { ...scope, keyword: literalKeyword(keyword), depth: pages * 10, device },
+          payload: { ...scope, keyword: literalKeyword(keyword), depth: pages * 10, device, resolve_goto_urls },
+          timeoutMs: 90_000,
           description: `${keyword} (${String(location).trim()} / ${language_code} / ${device})`,
           units: `${pages} page(s) × $0.002${operatorCount ? ` × 5^${operatorCount} for search operators` : ""}`,
           costMicros: pages * 2_000 * 5 ** operatorCount,

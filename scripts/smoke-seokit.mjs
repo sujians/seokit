@@ -121,7 +121,7 @@ try {
 async function checkDataForSeo(invoke, writeFile) {
   const loginKey = "DATAFORSEO_LOGIN";
   const passwordKey = "DATAFORSEO_PASSWORD";
-  const keys = [loginKey, passwordKey, "https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY"];
+  const keys = [loginKey, passwordKey, "https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY", "NODE_USE_ENV_PROXY"];
   const savedEnv = keys.map((key) => process.env[key]);
   const dispatcher = getGlobalDispatcher();
   const mock = new MockAgent();
@@ -180,7 +180,9 @@ async function checkDataForSeo(invoke, writeFile) {
     process.env[loginKey] = envLogin;
     await request(envLogin, envPassword);
     await request(envLogin, envPassword, 401);
+    await checkGoogleGotoSession(mock, runProvider, market);
     await checkGoogleGoto(mock, runProvider, market);
+    await checkGoogleGotoRedirects(mock, runProvider, market);
     process.env[loginKey] = "";
     assert.deepEqual((await runProvider("keywords", args)).missingEnv, [loginKey]);
   } finally {
@@ -193,7 +195,62 @@ async function checkDataForSeo(invoke, writeFile) {
   }
 }
 
+async function checkGoogleGotoSession(mock, runProvider, market) {
+  mock.enableCallHistory();
+  const apex = "https://google.com";
+  const www = "https://www.google.com";
+  const initialPath = "/goto?url=CAESopaque%2f%3d&gsessionid=session%2Bvalue&extra=a%20b&extra=c+d";
+  const nextPath = "/goto?gsessionid=session%2Bvalue&url=CAESother%2b%3d&extra=%7e&extra=~";
+  const target = "https://www.example.com/product?size=12&srsltid=tracking&spec=a%20b&%73rsltid=duplicate#specs";
+  const timeoutPath = "/goto?url=CAEStimeout&gsessionid=session%2Bvalue";
+  const items = [
+    { type: "organic", rank_group: 1, url: `${apex}${initialPath}`, domain: "google.com" },
+    { type: "organic", rank_group: 2, url: `${www}${timeoutPath}`, domain: "google.com" },
+  ];
+  const headers = { "user-agent": "Mozilla/5.0", connection: "close" };
+  mock.get("https://api.dataforseo.com")
+    .intercept({ path: "/v3/serp/google/organic/live/regular", method: "POST" })
+    .reply(200, { status_code: 20000, cost: 0.002, tasks: [{ status_code: 20000, result: [{ items }] }] });
+  const google = mock.get(www);
+  const requestTimes = [];
+  const reply = (path, statusCode, location) => google.intercept({ path, method: "GET", headers }).reply(() => {
+    requestTimes.push(performance.now());
+    return { statusCode, responseOptions: { headers: location ? { location } : {} } };
+  });
+  reply(initialPath, 400).delay(100);
+  reply(initialPath, 429);
+  reply(initialPath, 302, `${www}${nextPath}`);
+  reply(nextPath, 303, target);
+  reply(timeoutPath, 302, "https://too-late.example/").delay(11_000);
+  reply(timeoutPath, 302, "https://recovered.example/parts?srsltid=tracking");
+
+  const result = await runProvider("serp", { ...market, keywords: ["enclosures"] });
+  assert.equal(result.status, "ok");
+  const [row, recovered] = result.results[0].organic;
+  assert.equal(row.url, "https://www.example.com/product?size=12&spec=a%20b#specs");
+  assert.equal(row.domain, "example.com");
+  assert.equal(row.unresolved_goto, undefined);
+  assert.equal(recovered.url, "https://recovered.example/parts");
+  assert.equal(recovered.unresolved_goto, undefined);
+  assert.deepEqual(mock.getCallHistory().calls().filter(({ method }) => method === "GET").map(({ fullUrl }) => fullUrl), [
+    `${www}${initialPath}`,
+    `${www}${initialPath}`,
+    `${www}${initialPath}`,
+    `${www}${nextPath}`,
+    `${www}${timeoutPath}`,
+    `${www}${timeoutPath}`,
+  ]);
+  const [first, retry, secondRetry, hop, timeoutStart, timeoutRetry] = requestTimes;
+  assert.ok(retry - first >= 2_095, "400 retry started less than 2000 ms after the delayed response");
+  assert.ok(secondRetry - retry >= 3_995, "429 retry did not wait 4000 ms");
+  assert.ok(hop - secondRetry >= 795, "Google redirect did not wait 800 ms");
+  assert.ok(timeoutStart - hop >= 795, "The next link did not wait 800 ms");
+  assert.ok(timeoutRetry - timeoutStart >= 11_995, "Timeout retry did not allow 10000 ms and a 2000 ms backoff");
+  mock.assertNoPendingInterceptors();
+}
+
 async function checkGoogleGoto(mock, runProvider, market) {
+  mock.clearCallHistory();
   const google = "https://www.google.com";
   const regionalGoogle = "https://www.google.co.uk";
   const redirect = "/goto?url=CAESredirect";
@@ -209,34 +266,102 @@ async function checkGoogleGoto(mock, runProvider, market) {
     organic(3, `${google}${redirect}`),
     organic(1, redirect),
     organic(5, `${regionalGoogle}${rateLimited}`, { breadcrumb: "... › Catalog", website_name: "Fixture Fabrication" }),
-    organic(6, "https://direct.example/page", { domain: "direct.example" }),
+    organic(6, "https://WWW.Direct.Example./page?srsltid=server&spec=a%20b&%73rsltid=duplicate#parts", { domain: "stale.example" }),
   ];
   mock.enableCallHistory();
   mock.get("https://api.dataforseo.com")
     .intercept({ path: "/v3/serp/google/organic/live/regular", method: "POST" })
     .reply(200, { status_code: 20000, cost: 0.002, tasks: [{ status_code: 20000, result: [{ items }] }] });
   const search = mock.get(google);
-  search.intercept({ path: redirect, method: "GET", headers: { "user-agent": /seokit/ } })
+  search.intercept({ path: redirect, method: "GET", headers: { "user-agent": "Mozilla/5.0" } })
     .reply(302, "", { headers: { location: redirectTarget } });
   search.intercept({ path: challenge, method: "GET" }).reply(200, "Verification page");
-  mock.get(regionalGoogle).intercept({ path: rateLimited, method: "GET" }).reply(429, "Too many requests");
+  mock.get(regionalGoogle).intercept({ path: rateLimited, method: "GET" }).reply(429, "Too many requests").times(3);
 
   const result = await runProvider("serp", { ...market, keywords: ["enclosures"], top_n: 6 });
   assert.equal(result.status, "ok");
   mock.assertNoPendingInterceptors();
-  assert.deepEqual(result.results[0].organic.map(({ rank, url, domain, unresolved_goto }) => [rank, url, domain, unresolved_goto]), [
+  const rows = result.results[0].organic;
+  assert.deepEqual(rows.map(({ rank, url, domain, goto_resolve_error }) => [rank, url, domain, goto_resolve_error]), [
     [1, "https://www.example.com/products?size=12#specs", "example.com", undefined],
-    [2, `${google}${challenge}`, "parts.example", true],
+    [2, `${google}${challenge}`, "parts.example", "http_200_no_redirect"],
     [3, "https://www.example.com/products?size=12#specs", "example.com", undefined],
-    [4, `${regionalGoogle}${rateLimited}`, "metals.example", true],
-    [5, `${regionalGoogle}${rateLimited}`, "Fixture Fabrication", true],
-    [6, "https://direct.example/page", "direct.example", undefined],
+    [4, `${regionalGoogle}${rateLimited}`, "metals.example", "http_429"],
+    [5, `${regionalGoogle}${rateLimited}`, "Fixture Fabrication", "http_429"],
+    [6, "https://www.direct.example./page?spec=a%20b#parts", "direct.example", undefined],
   ]);
+  assert.deepEqual(rows.filter(({ unresolved_goto }) => unresolved_goto).map(({ rank }) => rank), [2, 4, 5]);
+  assert.match(rows[3].goto_resolve_hint, /HTTPS_PROXY/);
   const calls = mock.getCallHistory().calls();
-  assert.equal(calls.filter(({ method }) => method === "POST").length, 1);
+  const posts = calls.filter(({ method }) => method === "POST");
+  assert.equal(posts.length, 1);
+  assert.equal(JSON.parse(posts[0].body)[0].resolve_goto_urls, true);
   assert.deepEqual(calls.filter(({ method }) => method !== "POST").map(({ method, fullUrl }) => `${method} ${fullUrl}`).sort(), [
     `GET ${google}${challenge}`,
     `GET ${google}${redirect}`,
     `GET ${regionalGoogle}${rateLimited}`,
+    `GET ${regionalGoogle}${rateLimited}`,
+    `GET ${regionalGoogle}${rateLimited}`,
   ].sort());
+}
+
+async function checkGoogleGotoRedirects(mock, runProvider, market) {
+  mock.clearCallHistory();
+  const google = "https://www.google.com";
+  const regionalGoogle = "https://google.co.uk";
+  const expectedGets = [];
+  const get = (origin, path) => {
+    expectedGets.push(`${origin}${path}`);
+    return mock.get(origin).intercept({ path, method: "GET" });
+  };
+  const redirect = (origin, path, location) => get(origin, path).reply(302, "", { headers: { location } });
+  const inputs = ["chain", "refresh", "canonical", "sorry", "limit", "network", "loop"];
+  const paths = inputs.map((input) => `/goto?url=CAES${input}`);
+  const [chain, refresh, canonical, sorry, limit, network, loop] = paths;
+  redirect(google, chain, "/url?hop=1");
+  redirect(google, "/url?hop=1", `${regionalGoogle}/url?hop=2`);
+  redirect(regionalGoogle, "/url?hop=2", "?hop=3");
+  redirect(regionalGoogle, "/url?hop=3", "https://www.example.com/chain?srsltid=remove#end");
+  get(google, refresh).reply(200, `<meta content="0; URL='//www.example.com/refresh?x=1&amp;srsltid=remove'" http-equiv="Refresh">`);
+  get(google, canonical).reply(200, `<link href="https://www.example.com/canonical?srsltid=remove" rel="Canonical">`);
+  redirect(google, sorry, "/sorry/index?continue=x");
+  redirect(google, limit, "/url?limit=1");
+  for (let hop = 1; hop <= 3; hop++) redirect(google, `/url?limit=${hop}`, `/url?limit=${hop + 1}`);
+  get(google, network).replyWithError(Object.assign(new Error("mock-network-private-detail"), { code: "ECONNRESET" }));
+  redirect(google, loop, `${loop}#same-request`);
+
+  const payload = [{ location_code: market.location, language_code: market.language_code, keyword: "enclosures", depth: 10, device: "desktop", resolve_goto_urls: false }];
+  const items = [
+    ...paths.map((url, index) => ({ type: "organic", rank_group: index + 1, url, domain: "google.com" })),
+    { type: "organic", rank_group: paths.length + 1, url: "https://provider.example/", domain: "provider.example" },
+  ];
+  mock.get("https://api.dataforseo.com")
+    .intercept({ path: "/v3/serp/google/organic/live/regular", method: "POST", body: JSON.stringify(payload) })
+    .reply(200, { status_code: 20000, cost: 0.002, tasks: [{ status_code: 20000, result: [{ items }] }] });
+  const args = { ...market, keywords: ["enclosures"], resolve_goto_urls: false };
+  const dryRun = await runProvider("serp", { ...args, dry_run: true });
+  assert.equal(dryRun.estimate.totalUsd, 0.002);
+  assert.deepEqual(mock.getCallHistory().calls(), []);
+  process.env.NODE_USE_ENV_PROXY = "1";
+  const result = await runProvider("serp", args);
+  assert.equal(result.status, "ok");
+  mock.assertNoPendingInterceptors();
+  const rows = result.results[0].organic;
+  assert.deepEqual(rows.map(({ url, goto_resolve_error }) => [url, goto_resolve_error]), [
+    ["https://www.example.com/chain#end", undefined],
+    ["https://www.example.com/refresh?x=1", undefined],
+    ["https://www.example.com/canonical", undefined],
+    [sorry, "google_sorry"],
+    [limit, "still_google_redirect"],
+    [network, "network_error: ECONNRESET"],
+    [loop, "still_google_redirect"],
+    ["https://provider.example/", undefined],
+  ]);
+  assert.ok(rows.slice(3, 7).every(({ unresolved_goto, domain }) => unresolved_goto && domain === null));
+  assert.match(rows[5].goto_resolve_hint, /NODE_USE_ENV_PROXY=1.*HTTPS_PROXY/);
+  assert.ok(!JSON.stringify(result).includes("mock-network-private-detail"));
+  const calls = mock.getCallHistory().calls();
+  assert.equal(calls.filter(({ method }) => method === "POST").length, 1);
+  assert.deepEqual(calls.filter(({ method }) => method !== "POST").map(({ method, fullUrl }) => `${method} ${fullUrl}`).sort(),
+    expectedGets.map((url) => `GET ${url}`).sort());
 }
